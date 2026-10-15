@@ -13,4 +13,9 @@ name = "jaguar-amdgpu"
 version = "0.1.0"
 dependencies = [
  "amdgpu-device-libs",
+ "parser",
 ]
+
+[[package]]
+name = "parser"
+version = "0.1.0"
