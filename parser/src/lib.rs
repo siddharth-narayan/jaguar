@@ -1,13 +1,15 @@
 #![no_std]
 
-enum Action {
+#[derive(Copy, Clone)]
+pub enum Action {
     Push,
     Reduce
 }
 
+#[derive(Copy, Clone)]
 pub struct Transition {
-    next_state: usize,
-    action: Action
+    pub next_state: usize,
+    pub action: Action
 }
 
 pub struct TransitionTable {
@@ -20,5 +22,13 @@ impl TransitionTable {
     
     pub fn new(states: &'static [Transition]) -> TransitionTable {
         TransitionTable { states }
+    }
+
+    pub fn get(&self, transition: usize) -> Option<&Transition> {
+        self.states.get(transition)
+    }
+
+    pub unsafe fn get_unchecked(&self, transition: usize) -> &Transition {
+        unsafe { self.states.get_unchecked(transition) }
     }
 }
