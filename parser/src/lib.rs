@@ -1,5 +1,7 @@
 #![no_std]
 
+pub mod json;
+
 #[derive(Copy, Clone)]
 pub enum Action {
     Push,
@@ -13,22 +15,21 @@ pub struct Transition {
 }
 
 pub struct TransitionTable {
-    states: &'static [Transition]
+    transitions: &'static [(usize, Transition)]
 }
 
 impl TransitionTable {
-    pub const START: usize = 0;
-    pub const FINISH: usize = usize::MAX;
-    
-    pub fn new(states: &'static [Transition]) -> TransitionTable {
-        TransitionTable { states }
+    pub fn new(transitions: &'static [(usize, Transition)]) -> TransitionTable {
+        TransitionTable { transitions }
     }
 
-    pub fn get(&self, transition: usize) -> Option<&Transition> {
-        self.states.get(transition)
-    }
-
-    pub unsafe fn get_unchecked(&self, transition: usize) -> &Transition {
-        unsafe { self.states.get_unchecked(transition) }
+    pub fn get(&self, input: usize) -> Option<&Transition> {
+        for (i, t) in self.transitions {
+            if *i == input {
+                return Some(t)
+            }
+        }
+        
+        None
     }
 }

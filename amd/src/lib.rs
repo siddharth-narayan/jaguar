@@ -2,22 +2,22 @@
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]
 
-extern crate alloc;
+// extern crate alloc;
+// use alloc::vec::Vec;
 
-use alloc::vec::Vec;
 use amdgpu_device_libs::prelude::*;
 
-use parser::{Action, TransitionTable};
+use parser::{Action, TransitionTable, json};
 
 // use parser::
 
 #[no_mangle]
 pub extern "gpu-kernel" fn kernel(table: &TransitionTable, input: &[char]) {
 
-    let mut state = TransitionTable::START;
+    let mut state = json::ParseTable::START;
 
     loop {
-        if state == TransitionTable::FINISH {
+        if state == json::ParseTable::FINISH {
             println!("Completed work item ({}, {}, {})", workitem_id_x(), workitem_id_y(), workitem_id_z());
             core::process::abort_immediate()
             // Report success?
