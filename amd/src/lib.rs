@@ -7,14 +7,17 @@ use alloc::collections::VecDeque;
 
 use amdgpu_device_libs::prelude::*;
 
-use parser::{Action, ParseTable, TransitionTable, json};
+use parser::{ParseTable, Transition, TransitionTable, json::{JSON, Token}};
 
 // use parser::
 
 #[no_mangle]
-pub extern "gpu-kernel" fn kernel(table: &TransitionTable, input: &[char]) {
-    let stack: VecDeque<usize> = VecDeque::with_capacity(1024);
+pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
+    let mut stack: VecDeque<usize> = VecDeque::with_capacity(1024);
+    stack.push_back(ParseTable::FINISH);
+
     let mut state = ParseTable::START;
+    let mut cursor = 0;
 
     loop {
         if state == ParseTable::FINISH {
@@ -24,22 +27,30 @@ pub extern "gpu-kernel" fn kernel(table: &TransitionTable, input: &[char]) {
             // dispatch_ptr().completion_signal.handle;
         }
 
-        let next = table.get(state).unwrap();
-        match next.action {
-            Action::None => {
-
+        // Avoid unwrap in real gpu code
+        let transition_table = table.get(state).unwrap();
+        match transition_table.get(cursor).unwrap() {
+            Transition::None { next } => {
+                state = *next;
+                cursor += 1;
             },
             
-            Action::Push => {
-
+            Transition::Push { next } => {
+                // Skip for now
+                state = *next;
+                cursor += 1;
             },
 
-            Action::Reduce => {
+            Transition::Call { call } => {
+                stack.push_back(*call);
+            },
 
+            Transition::Uncall => {
+                stack.pop_back();
             }
-        }
+        };
 
-        state = next.next_state;
+        
 
 
 

@@ -3,22 +3,11 @@
 pub mod json;
 
 #[derive(Copy, Clone)]
-pub enum Action {
-    None,
-    Push,
-    Reduce
-}
-
-#[derive(Copy, Clone)]
-pub struct Transition {
-    pub next_state: usize,
-    pub action: Action
-}
-
-impl Transition {
-    pub const fn new(next: usize, action: Action) -> Transition {
-        Transition { next_state: next, action }
-    }
+pub enum Transition {
+    None { next: usize },
+    Push { next: usize },
+    Call { call: usize },
+    Uncall
 }
 
 pub struct TransitionTable {
@@ -47,12 +36,17 @@ pub struct ParseTable {
 
 impl ParseTable {
     pub const START: usize = 0;
-    pub const FAIL: usize = usize::MAX - 1;
-    pub const FINISH: usize = usize::MAX;
+    pub const FINISH: usize = 1;
+    pub const FAIL: usize = 2;
+    pub const UNCALL: usize = 3; // A state that only uncalls
 
     pub const fn new(states: &'static [TransitionTable]) -> ParseTable {
         ParseTable {
             states
         }
+    }
+
+    pub fn get(&self, state: usize) -> Option<&TransitionTable> {
+        self.states.get(state)
     }
 }
