@@ -1,3 +1,5 @@
+#![cfg(target_arch = "amdgcn-amd-amdhsa")]
+
 #![no_std]
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]

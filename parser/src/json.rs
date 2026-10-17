@@ -5,7 +5,7 @@ use crate::{
 use self::Token::*;
 
 #[repr(usize)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Token {
     STRING,
     NUMBER,
@@ -14,6 +14,7 @@ pub enum Token {
     NULL,
 
     COLON,
+    COMMA,
 
     LBRACE,
     RBRACE,
@@ -24,10 +25,10 @@ pub enum Token {
 #[repr(usize)]
 #[derive(Clone, Copy)]
 enum Rule {
-    Value = 4,
-    Obj = 5,
+    Value = 0,
+    Obj = 4,
     Pair = 6,
-    Arr = 7,
+    Arr = 8,
 }
 
 #[rustfmt::skip]
@@ -109,7 +110,12 @@ const STATES: &'static [TransitionTable] = &[
             (TRUE as usize, Transition::Push { next: 10 }),
             (FALSE as usize, Transition::Push { next: 10 }),
             (NULL as usize, Transition::Push { next: 10 }),
-            (LBRACK as usize, Transition::Call { call: 8 }),
+            (LBRACK as usize, Transition::Call { call: 8 }), // Does this miss commas?
+        ]),
+
+        // State 10
+        TransitionTable::new(&[
+            (COMMA as usize, Transition::None { next: 9 } ),
         ]),
 ];
 
