@@ -28,12 +28,12 @@ const STATES: &'static [TransitionTable] = &[
     // Value - State 0
     TransitionTable::new(&[
         (LBRACE as usize, Transition::new(1, Action::None)),  // Obj
-        (LBRACK as usize, Transition::new(20, Action::None)),  // Arr
+        (LBRACK as usize, Transition::new(5, Action::None)),  // Arr
         (STRING as usize, Transition::new(0, Action::Reduce)), // String
         (NUMBER as usize, Transition::new(0, Action::Reduce)), // Number
         (TRUE   as usize, Transition::new(0, Action::Reduce)), // True
         (FALSE  as usize, Transition::new(0, Action::Reduce)), // False
-        (NULL   as usize, Transition::new(0, Action::Reduce)), // None
+        (NULL   as usize, Transition::new(0, Action::Reduce)), // Null
     ]),
 
     // Obj - State 1
@@ -68,7 +68,7 @@ const STATES: &'static [TransitionTable] = &[
             (NUMBER as usize, Transition::new(0, Action::None)),
             (TRUE as usize, Transition::new(0, Action::None)),
             (FALSE as usize, Transition::new(0, Action::None)),
-            (NULL as usize, Transition::new(0, Action::None)),
+            (NULL as usize, Transition::new(0, Action::Reduce)),
             (LBRACK as usize, Transition::new(5, Action::None)),
         ]),
 ];
