@@ -4,11 +4,10 @@ use parser::{ParseTable, Transition, TransitionTable, json::{JSON, JsonFragment,
 
 pub fn kernel(table: &ParseTable, input: &[Token]) {
     let mut state_stack: VecDeque<(usize, usize)> = VecDeque::with_capacity(1024);
-    state_stack.push_back((ParseTable::FINISH, 0));
-
+    state_stack.push_back((JsonFragmentType::Value as usize, 0));
     let mut tokenstack: VecDeque<JsonFragment> = VecDeque::with_capacity(1024);
     tokenstack.push_back(JsonFragment::default());
-    tokenstack.push_back(JsonFragment::default());
+    let mut result = JsonFragment::default();
 
     let mut state = JsonFragmentType::Value as usize;
     let mut cursor = 0;
@@ -51,12 +50,12 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
                 cursor += 1;
             },
 
-            Transition::Call { call, uncall } => {
-                println!("Call {} from state {}", call, state);
+            Transition::Call { call_state, return_state } => {
+                println!("Call {} from state {}", call_state, state);
 
-                state_stack.push_back((*call, *uncall));
+                state_stack.push_back((*call_state, *return_state));
                 tokenstack.push_back(JsonFragment { fragment_type: Incomplete, children: Vec::new(), tokens: Vec::new() });
-                state = *call;
+                state = *call_state;
             },
 
             Transition::Uncall => {
@@ -66,14 +65,17 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
                 
                 let mut fragment = tokenstack.pop_back().unwrap();
                 fragment.fragment_type = caller;
-                tokenstack.back_mut().unwrap().children.push(fragment);
-
+                if let Some(s) = tokenstack.back_mut() {
+                    s.children.push(fragment);
+                } else {
+                    result = fragment;
+                }
                 state = return_state;
             },
         };
     };
 
-    println!("{:#?}", tokenstack);
+    println!("{:#?}", result);
     println!("sucess: {}", success)
 }
 

@@ -11,7 +11,7 @@ pub enum Transition {
     None { next: usize },
     Push { next: usize },
     // Uncall is for different return "addresses"
-    Call { call: usize, uncall: usize },
+    Call { call_state: usize, return_state: usize },
     Uncall
 }
 

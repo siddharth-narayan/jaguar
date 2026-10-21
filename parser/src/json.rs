@@ -74,8 +74,8 @@ const STATES: &'static [TransitionTable] = &[
     
     // Value - State 2
     TransitionTable::new(&[
-        (LBRACE, Transition::Call { call: JsonFragmentType::Obj as usize, uncall: 3 }),  // Obj
-        (LBRACK, Transition::Call { call: JsonFragmentType::Arr as usize, uncall: 3 }),  // Arr
+        (LBRACE, Transition::Call { call_state: JsonFragmentType::Obj as usize, return_state: 3 }),  // Obj
+        (LBRACK, Transition::Call { call_state: JsonFragmentType::Arr as usize, return_state: 3 }),  // Arr
         (STRING, Transition::Push { next: 3 }), // String
         (NUMBER, Transition::Push { next: 3 }), // Number
         (TRUE  , Transition::Push { next: 3 }), // True
@@ -92,7 +92,7 @@ const STATES: &'static [TransitionTable] = &[
     ]),
         // State 5
         TransitionTable::new(&[
-            (STRING, Transition::Call { call: JsonFragmentType::Pair as usize, uncall: 6 }),  // Pair
+            (STRING, Transition::Call { call_state: JsonFragmentType::Pair as usize, return_state: 6 }),  // Pair
             (RBRACE, Transition::Uncall)
         ]),
 
@@ -115,7 +115,7 @@ const STATES: &'static [TransitionTable] = &[
         ]),
 
         // State 9
-        TransitionTable::new(&TransitionTable::new_all(Transition::Call { call: JsonFragmentType::Value as usize, uncall: 10 })),
+        TransitionTable::new(&TransitionTable::new_all(Transition::Call { call_state: JsonFragmentType::Value as usize, return_state: 10 })),
 
         // State 10
         TransitionTable::new(&TransitionTable::new_all(Transition::Uncall)),
@@ -133,8 +133,8 @@ const STATES: &'static [TransitionTable] = &[
             (TRUE, Transition::Push { next: 13 }),
             (FALSE, Transition::Push { next: 13 }),
             (NULL, Transition::Push { next: 13 }),
-            (LBRACE, Transition::Call { call: JsonFragmentType::Obj as usize, uncall: 13 }),
-            (LBRACK, Transition::Call { call: JsonFragmentType::Arr as usize, uncall: 13 }),
+            (LBRACE, Transition::Call { call_state: JsonFragmentType::Obj as usize, return_state: 13 }),
+            (LBRACK, Transition::Call { call_state: JsonFragmentType::Arr as usize, return_state: 13 }),
         ]),
 
         // State 13
