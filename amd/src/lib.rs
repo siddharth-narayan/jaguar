@@ -1,6 +1,6 @@
-#![cfg(target_arch = "amdgcn-amd-amdhsa")]
-
 #![no_std]
+
+#![cfg(target_arch = "amdgpu")]
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]
 
@@ -10,8 +10,6 @@ use alloc::collections::VecDeque;
 use amdgpu_device_libs::prelude::*;
 
 use parser::{ParseTable, Transition, TransitionTable, json::{JSON, Token}};
-
-// use parser::
 
 #[no_mangle]
 pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
@@ -30,8 +28,15 @@ pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
         }
 
         // Avoid unwrap in real gpu code
-        let transition_table = table.get(state).unwrap();
-        match transition_table.get(cursor).unwrap() {
+        let token = match input.get(cursor) {
+            Some(t) => t,
+            None => {
+                &Token::EOF
+            }
+        };   
+        
+        let transition_table = unsafe  { table.get(state).unwrap() };
+        match transition_table.get(*token) {
             Transition::None { next } => {
                 state = *next;
                 cursor += 1;
