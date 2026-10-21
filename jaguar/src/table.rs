@@ -4,8 +4,6 @@ extern crate alloc;
 
 use crate::json::{JsonFragmentType, Token::{self, *}};
 
-pub mod json;
-
 #[derive(Copy, Clone)]
 pub enum Transition {
     None { next: usize },

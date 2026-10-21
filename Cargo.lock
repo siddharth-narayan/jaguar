@@ -9,20 +9,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95f6013212f044192c3d3bb52a41aeeb0b071d6350a3df674ff27ba961865b20"
 
 [[package]]
+name = "jaguar"
+version = "0.1.0"
+
+[[package]]
 name = "jaguar-amdgpu"
 version = "0.1.0"
 dependencies = [
  "amdgpu-device-libs",
- "parser",
 ]
-
-[[package]]
-name = "parser"
-version = "0.1.0"
 
 [[package]]
 name = "x86"
 version = "0.1.0"
-dependencies = [
- "parser",
-]

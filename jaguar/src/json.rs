@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    ParseTable, Transition, TransitionTable,
+    table::{ParseTable, Transition, TransitionTable}
 };
 
 use self::Token::*;
