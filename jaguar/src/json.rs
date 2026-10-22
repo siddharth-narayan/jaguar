@@ -67,10 +67,10 @@ pub enum Token {
 #[rustfmt::skip]
 const STATES: &'static [TransitionTable] = &[
     // Finish - State 0
-    TransitionTable::new(&TransitionTable::new_all(Transition::None { next: 0 })),
+    TransitionTable::new_ex(&[], Transition::None { next: 0 }),
 
     // Fail - State 1
-    TransitionTable::new(&TransitionTable::new_all(Transition::None { next: 1 })),
+    TransitionTable::new_ex(&[], Transition::None { next: 1 }),
     
     // Value - State 2
     TransitionTable::new(&[
@@ -83,7 +83,7 @@ const STATES: &'static [TransitionTable] = &[
         (NULL  , Transition::Push { next: 3 }), // Null
     ]),
         // State 3
-        TransitionTable::new(&TransitionTable::new_all(Transition::Uncall)),
+        TransitionTable::new_ex(&[], Transition::Uncall),
 
 
     // Obj - State 4
@@ -97,11 +97,9 @@ const STATES: &'static [TransitionTable] = &[
         ]),
 
         // State 6
-        TransitionTable::new(
-            &TransitionTable::special_case(
-                (COMMA, Transition::None { next: 5 }),
-                Transition::Uncall
-            )
+        TransitionTable::new_ex(
+            &[(COMMA, Transition::None { next: 5 })],
+            Transition::Uncall
         ),
 
     // Pair - State 7
@@ -115,10 +113,10 @@ const STATES: &'static [TransitionTable] = &[
         ]),
 
         // State 9
-        TransitionTable::new(&TransitionTable::new_all(Transition::Call { call_state: JsonFragmentType::Value as usize, return_state: 10 })),
+        TransitionTable::new_ex(&[], Transition::Call { call_state: JsonFragmentType::Value as usize, return_state: 10 }),
 
         // State 10
-        TransitionTable::new(&TransitionTable::new_all(Transition::Uncall)),
+        TransitionTable::new_ex(&[], Transition::Uncall),
 
     // Array - State 11
     TransitionTable::new(&[
@@ -138,12 +136,10 @@ const STATES: &'static [TransitionTable] = &[
         ]),
 
         // State 13
-        TransitionTable::new(
-            &TransitionTable::special_case(
-                (COMMA, Transition::None { next: 12 }),
-                Transition::Uncall
-            )
-        ),
+        TransitionTable::new_ex(
+            &[(COMMA, Transition::None { next: 12 })],
+            Transition::Uncall
+        )
 ];
 
 pub const JSON: ParseTable = ParseTable::new(2, &STATES);

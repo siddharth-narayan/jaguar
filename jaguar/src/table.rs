@@ -14,47 +14,17 @@ pub enum Transition {
 }
 
 pub struct TransitionTable {
-    transitions: &'static [(Token, Transition)]
+    transitions: &'static [(Token, Transition)],
+    unmatched: Transition
 }
 
 impl TransitionTable {
     pub const fn new(transitions: &'static [(Token, Transition)]) -> TransitionTable {
-        TransitionTable { transitions }
+        TransitionTable { transitions, unmatched: Transition::None { next: ParseTable::FAIL } }
     }
 
-    pub const fn special_case(special: (Token, Transition), default: Transition) -> [(Token, Transition); 13] {
-        [
-            special,
-            (STRING, default),
-            (NUMBER, default),
-            (TRUE, default),
-            (FALSE, default),
-            (NULL, default),
-            (COLON, default),
-            (COMMA, default),
-            (LBRACE, default),
-            (RBRACE, default),
-            (LBRACK, default),
-            (RBRACK, default),
-            (EOF, default)        
-        ]
-    }
-
-    pub const fn new_all(transition: Transition) -> [(Token, Transition); 12] {
-        [
-            (STRING, transition),
-            (NUMBER, transition),
-            (TRUE, transition),
-            (FALSE, transition),
-            (NULL, transition),
-            (COLON, transition),
-            (COMMA, transition),
-            (LBRACE, transition),
-            (RBRACE, transition),
-            (LBRACK, transition),
-            (RBRACK, transition),
-            (EOF, transition)        
-        ]
+    pub const fn new_ex(transitions: &'static [(Token, Transition)], unmatched: Transition) -> TransitionTable {
+        TransitionTable { transitions, unmatched}
     }
 
     pub fn get(&self, token: Token) -> &Transition {
@@ -64,9 +34,7 @@ impl TransitionTable {
             }
         }
         
-        println!("Failed to find transition {:#?} for table", token);
-
-        &Transition::None { next: ParseTable::FAIL }
+        &self.unmatched
     }
 }
 

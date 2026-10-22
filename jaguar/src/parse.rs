@@ -1,12 +1,17 @@
 use std::collections::VecDeque;
+use std::time::SystemTime;
 
 use crate::table::{ParseTable, Transition, TransitionTable};
 use crate::json::{JSON, JsonFragment, JsonFragmentType::{self, Incomplete}, Token};
 
 pub fn kernel(table: &ParseTable, input: &[Token]) {
+
     let mut state_stack: VecDeque<(usize, usize)> = VecDeque::with_capacity(1024);
-    state_stack.push_back((JsonFragmentType::Value as usize, 0));
     let mut tokenstack: VecDeque<JsonFragment> = VecDeque::with_capacity(1024);
+    
+    let time = SystemTime::now();
+
+    state_stack.push_back((JsonFragmentType::Value as usize, 0));
     tokenstack.push_back(JsonFragment::default());
     let mut result = JsonFragment::default();
 
@@ -23,7 +28,7 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
         }
 
         // Avoid unwrap in real gpu code
-        let transition_table = unsafe  { table.get(state).unwrap() };
+        let transition_table = unsafe  { table.get(state).unwrap_unchecked() };
         
         let token = match input.get(cursor) {
             Some(t) => t,
@@ -32,19 +37,19 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
             }
         };
 
-        println!("State: {}", state);
+        // println!("State: {}", state);
         match transition_table.get(*token) {
             Transition::None { next } => {
-                println!("None from state {}", state);
+                // println!("None from state {}", state);
 
                 state = *next;
                 cursor += 1;
             },
             
             Transition::Push { next } => {
-                println!("Push from state {}", state);
+                // println!("Push from state {}", state);
 
-                let back = unsafe { tokenstack.back_mut().unwrap() };
+                let back = unsafe { tokenstack.back_mut().unwrap_unchecked() };
                 back.tokens.push(token);
 
                 state = *next;
@@ -52,7 +57,7 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
             },
 
             Transition::Call { call_state, return_state } => {
-                println!("Call {} from state {}", call_state, state);
+                // println!("Call {} from state {}", call_state, state);
 
                 state_stack.push_back((*call_state, *return_state));
                 tokenstack.push_back(JsonFragment { fragment_type: Incomplete, children: Vec::new(), tokens: Vec::new() });
@@ -60,11 +65,11 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
             },
 
             Transition::Uncall => {
-                println!("Uncall from state {}", state);
-                let (caller, return_state) = unsafe { state_stack.pop_back().unwrap() };
+                // println!("Uncall from state {}", state);
+                let (caller, return_state) = unsafe { state_stack.pop_back().unwrap_unchecked() };
                 let caller =  unsafe { core::mem::transmute::<usize, JsonFragmentType>(caller) };
                 
-                let mut fragment = tokenstack.pop_back().unwrap();
+                let mut fragment = unsafe { tokenstack.pop_back().unwrap_unchecked() };
                 fragment.fragment_type = caller;
                 if let Some(s) = tokenstack.back_mut() {
                     s.children.push(fragment);
@@ -76,6 +81,6 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
         };
     };
 
+    println!("{}ns", time.elapsed().unwrap().as_nanos());
     println!("{:#?}", result);
-    println!("sucess: {}", success)
 }
