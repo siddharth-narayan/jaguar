@@ -1,8 +1,10 @@
 use std::collections::VecDeque;
 use std::time::SystemTime;
 
-use crate::table::{ParseTable, Transition, TransitionTable};
-use crate::json::{JSON, JsonFragment, JsonFragmentType::{self, Incomplete}, Token};
+use smallvec::SmallVec;
+
+use parse::table::{ParseTable, Transition, TransitionTable};
+use parse::json::{JSON, JsonFragment, JsonFragmentType::{self, Incomplete}, Token};
 
 pub fn kernel(table: &ParseTable, input: &[Token]) {
 
@@ -60,7 +62,7 @@ pub fn kernel(table: &ParseTable, input: &[Token]) {
                 // println!("Call {} from state {}", call_state, state);
 
                 state_stack.push_back((*call_state, *return_state));
-                tokenstack.push_back(JsonFragment { fragment_type: Incomplete, children: Vec::new(), tokens: Vec::new() });
+                tokenstack.push_back(JsonFragment { fragment_type: Incomplete, children: Vec::new(), tokens: SmallVec::new() });
                 state = *call_state;
             },
 

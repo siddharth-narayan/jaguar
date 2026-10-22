@@ -1,65 +1,91 @@
-#![no_std]
-
 #![cfg(target_arch = "amdgpu")]
+
+#![no_std]
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]
 
 extern crate alloc;
 use alloc::collections::VecDeque;
+use alloc::vec::Vec;
+
+use smallvec::SmallVec;
 
 use amdgpu_device_libs::prelude::*;
 
-use parser::{ParseTable, Transition, TransitionTable, json::{JSON, Token}};
+use parse::{table::{ParseTable, Transition, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
 
 #[no_mangle]
 pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
-    let mut stack: VecDeque<usize> = VecDeque::with_capacity(1024);
-    stack.push_back(ParseTable::FINISH);
+    let mut state_stack: VecDeque<(usize, usize)> = VecDeque::with_capacity(1024);
+    let mut tokenstack: VecDeque<JsonFragment> = VecDeque::with_capacity(1024);
 
-    let mut state = ParseTable::START;
+    state_stack.push_back((JsonFragmentType::Value as usize, 0));
+    tokenstack.push_back(JsonFragment::default());
+    let mut result = JsonFragment::default();
+
+    let mut state = JsonFragmentType::Value as usize;
     let mut cursor = 0;
 
-    loop {
+    let success = loop {
         if state == ParseTable::FINISH {
-            println!("Completed work item ({}, {}, {})", workitem_id_x(), workitem_id_y(), workitem_id_z());
-            core::process::abort_immediate()
-            // Report success?
-            // dispatch_ptr().completion_signal.handle;
+            break true;
+        }
+
+        if state == ParseTable::FAIL {
+            break false;
         }
 
         // Avoid unwrap in real gpu code
+        let transition_table = unsafe  { table.get(state).unwrap_unchecked() };
+        
         let token = match input.get(cursor) {
             Some(t) => t,
             None => {
                 &Token::EOF
             }
-        };   
-        
-        let transition_table = unsafe  { table.get(state).unwrap() };
+        };
+
+        // println!("State: {}", state);
         match transition_table.get(*token) {
             Transition::None { next } => {
+                // println!("None from state {}", state);
+
                 state = *next;
                 cursor += 1;
             },
             
             Transition::Push { next } => {
-                // Skip for now
+                // println!("Push from state {}", state);
+
+                let back = unsafe { tokenstack.back_mut().unwrap_unchecked() };
+                back.tokens.push(token);
+
                 state = *next;
                 cursor += 1;
             },
 
-            Transition::Call { call } => {
-                stack.push_back(*call);
+            Transition::Call { call_state, return_state } => {
+                // println!("Call {} from state {}", call_state, state);
+
+                state_stack.push_back((*call_state, *return_state));
+                tokenstack.push_back(JsonFragment { fragment_type: JsonFragmentType::Incomplete, children: Vec::new(), tokens: SmallVec::new() });
+                state = *call_state;
             },
 
             Transition::Uncall => {
-                stack.pop_back();
-            }
+                // println!("Uncall from state {}", state);
+                let (caller, return_state) = unsafe { state_stack.pop_back().unwrap_unchecked() };
+                let caller =  unsafe { core::mem::transmute::<usize, JsonFragmentType>(caller) };
+                
+                let mut fragment = unsafe { tokenstack.pop_back().unwrap_unchecked() };
+                fragment.fragment_type = caller;
+                if let Some(s) = tokenstack.back_mut() {
+                    s.children.push(fragment);
+                } else {
+                    result = fragment;
+                }
+                state = return_state;
+            },
         };
-
-        
-
-
-
-    }
+    };
 }

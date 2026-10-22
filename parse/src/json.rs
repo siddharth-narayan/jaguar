@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use smallvec::SmallVec;
 
 use crate::{
     table::{ParseTable, Transition, TransitionTable}
@@ -40,7 +41,7 @@ impl TryFrom<usize> for JsonFragmentType {
 pub struct JsonFragment<'a> {
     pub fragment_type: JsonFragmentType,
     pub children: Vec<JsonFragment<'a>>,
-    pub tokens: Vec<&'a Token>
+    pub tokens: SmallVec<[&'a Token; 8]>
 }
 
 #[repr(usize)]

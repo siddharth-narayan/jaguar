@@ -4,3 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+parse = { version = "0.1.0", path = "../parse" }
+smallvec = "1.16.3"

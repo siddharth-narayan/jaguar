@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["amd", "x86", "jaguar"]
+members = ["amd", "x86", "parse"]
 
 [profile.dev]
 incremental = false # defaults to 'true' -- problem
