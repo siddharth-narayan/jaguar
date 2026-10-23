@@ -90,6 +90,9 @@
 
             alejandra
             toolchain
+            rocmPackages.hip-common
+            rocmPackages.rocm-runtime
+
           ];
         };
       }
