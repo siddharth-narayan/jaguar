@@ -4,15 +4,25 @@
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]
 
+use embedded_alloc::LlffHeap;
+
+#[global_allocator]
+static HEAP: LlffHeap = LlffHeap::empty();
+
 extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
 
 use smallvec::SmallVec;
 
-use amdgpu_device_libs::prelude::*;
+// use amdgpu_device_libs::prelude::*;
 
 use parse::{table::{ParseTable, Transition, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
+
+#[panic_handler]
+fn panic(panic_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
 
 #[no_mangle]
 pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
