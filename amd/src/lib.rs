@@ -99,3 +99,28 @@ pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
         };
     };
 }
+
+
+
+
+
+struct Cs;
+critical_section::set_impl!(Cs);
+unsafe impl critical_section::Impl for Cs {
+    unsafe fn acquire() -> critical_section::RawRestoreState { }
+    unsafe fn release(_: critical_section::RawRestoreState) { }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn memcmp(a: *const u8, b: *const u8, n: usize) -> i32 {
+    let mut i = 0;
+    while i < n {
+        let x = *a.add(i);
+        let y = *b.add(i);
+        if x != y {
+            return x as i32 - y as i32;
+        }
+        i += 1;
+    }
+    0
+}

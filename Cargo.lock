@@ -50,6 +50,7 @@ name = "jaguar-amdgpu"
 version = "0.1.0"
 dependencies = [
  "amdgpu-device-libs",
+ "critical-section",
  "embedded-alloc",
  "parse",
  "smallvec",
