@@ -1,5 +1,5 @@
 use libloading::{Library, Symbol};
-use std::{ffi::{c_char, c_int, c_uint, c_void}, ptr::null_mut, sync::Arc};
+use std::{ffi::{c_char, c_int, c_uint, c_void}, fs, ptr::null_mut, sync::Arc};
 
 use crate::hip::HIP;
 
@@ -12,6 +12,7 @@ pub fn main() -> Result<(), ()>{
     hip.init();
     
     let load_result = hip.load_module(KERNEL);
+    fs::write("testkernelout", KERNEL);
     let module = match load_result {
         Ok(m) => m,
         Err(e) => {
