@@ -5,14 +5,13 @@ use crate::hip::HIP;
 
 mod hip;
 
-static KERNEL: &[u8] = include_bytes!(env!("CARGO_CDYLIB_FILE_JAGUAR_AMDGPU_jaguar_amdgpu"));
+static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
 
 pub fn main() -> Result<(), ()>{
     let hip = HIP::load().unwrap();
     hip.init();
     
     let load_result = hip.load_module(KERNEL);
-    fs::write("testkernelout", KERNEL);
     let module = match load_result {
         Ok(m) => m,
         Err(e) => {

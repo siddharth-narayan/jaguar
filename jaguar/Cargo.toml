@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-jaguar-amdgpu = { version = "0.1.0", artifact = "cdylib", path = "../amd", target = "amdgcn-amd-amdhsa" }
+# jaguar-amdgpu = { version = "0.1.0", artifact = "cdylib", path = "../amd", target = "amdgcn-amd-amdhsa" }
 libloading = "0.9.0"

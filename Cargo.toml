@@ -4,3 +4,5 @@ members = ["amd", "x86", "parse", "jaguar"]
 
 [profile.dev]
 incremental = false # defaults to 'true' -- problem
+lto = "fat"
+codegen-units = 1
