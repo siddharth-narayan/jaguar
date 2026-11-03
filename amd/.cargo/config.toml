@@ -1,7 +1,7 @@
 # .cargo/config.toml
 [build]
 target = "amdgcn-amd-amdhsa"
-rustflags = ["-Ctarget-cpu=gfx1100"]
+rustflags = ["-Ctarget-cpu=gfx1201"]
 # Add "-Ctarget-feature=-xnack-support" for xnack- GPUs (see above)
 
 [unstable]

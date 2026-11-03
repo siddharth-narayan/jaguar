@@ -42,6 +42,7 @@ dependencies = [
 name = "jaguar"
 version = "0.1.0"
 dependencies = [
+ "jaguar-amdgpu",
  "libloading",
 ]
 

@@ -90,10 +90,19 @@
 
             alejandra
             toolchain
+            rocmPackages.clr
             rocmPackages.hip-common
             rocmPackages.rocm-runtime
 
           ];
+
+
+          shellHook = ''
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
+              pkgs.rocmPackages.clr
+              pkgs.rocmPackages.rocm-runtime
+            ]}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          '';
         };
       }
     );
