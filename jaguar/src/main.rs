@@ -1,24 +1,18 @@
-use libloading::{Library, Symbol};
-use std::{ffi::{c_char, c_int, c_uint, c_void}, fs, ptr::null_mut, sync::Arc};
+use hip::hip_init;
 
-use crate::hip::HIP;
+use crate::hip::{HIPError, hip_describe_err, hip_load_module};
 
 mod hip;
 
 static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
 
-pub fn main() -> Result<(), ()>{
-    let hip = HIP::load().unwrap();
-    hip.init();
+pub fn main() -> Result<(), HIPError> {
+    hip_init(0);
     
-    let load_result = hip.load_module(KERNEL);
-    let module = match load_result {
-        Ok(m) => m,
-        Err(e) => {
-            println!("{:#?}", hip.describe_err(e));
-            return Err(());
-        }
-    };
+    let module = hip_load_module(KERNEL).map_err(hip_describe_err)?;
+    let kernel = module.get_function("kernel").map_err(hip_describe_err)?;
+
+
 
     // ...hipMalloc, hipMemcpy, hipModuleLaunchKernel, hipDeviceSynchronize, hipFree the same way
 

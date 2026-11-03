@@ -39,9 +39,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "hip-runtime-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e427145324f4d6f206459dc0d8fa36873a4a820ebc529406f19843343f50a0b"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "hip-sys"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ae3fef310e4b716c447b3506485cdb5e104ba6b96a20a1b2e0a664ce1457fb4"
+dependencies = [
+ "hip-runtime-sys",
+]
+
+[[package]]
 name = "jaguar"
 version = "0.1.0"
 dependencies = [
+ "hip-sys",
  "libloading",
 ]
 
