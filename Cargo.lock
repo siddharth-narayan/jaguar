@@ -39,6 +39,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hip"
+version = "0.1.0"
+dependencies = [
+ "hip-runtime-sys",
+]
+
+[[package]]
 name = "hip-runtime-sys"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

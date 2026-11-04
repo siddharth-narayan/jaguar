@@ -1,8 +1,4 @@
-use hip::hip_init;
-
-use crate::hip::{HIPError, hip_describe_err, hip_load_module};
-
-mod hip;
+use hip::{HIPError, hip_describe_err, hip_load_module, hip_init};
 
 static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
 
