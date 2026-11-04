@@ -25,7 +25,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[no_mangle]
-pub extern "gpu-kernel" fn kernel(table: &ParseTable, input: &[Token]) {
+pub extern "gpu-kernel" fn kernel(table: *const ParseTable, inputs: *const Vec<Vec<Token>>) {
     let mut state_stack: VecDeque<(usize, usize)> = VecDeque::with_capacity(1024);
     let mut tokenstack: VecDeque<JsonFragment> = VecDeque::with_capacity(1024);
 

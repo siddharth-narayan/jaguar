@@ -1,8 +1,12 @@
-use std::{ffi::{CStr, CString}, ptr::null_mut};
+use std::{ffi::{CStr, CString, c_void}, mem::{self, ManuallyDrop}, ptr::null_mut};
 
-use hip_sys::hiprt::{hipError_t, hipFunction_t, hipGetErrorName, hipGetErrorString, hipInit, hipModule_t, hipModuleGetFunction};
+#[allow(non_camel_case_types)]  
+#[allow(non_upper_case_globals)]
+#[allow(non_snake_case)]
+pub mod bindings;
+use bindings::{hipError_t, hipError_t as ErrorCode, hipFunction_t, hipGetErrorName, hipModuleGetFunctionCount, hipGetErrorString, hipInit, hipModule_t, hipModuleGetFunction, hipModuleLaunchKernel, hipModuleLoad, hipModuleOccupancyMaxPotentialBlockSize, hipModuleUnload, hipStream_t};
 
-pub use ::hip_sys::hiprt::hipError_t as ErrorCode;
+use crate::bindings::hipModuleLoadData;
 
 #[derive(Clone, Debug)]
 pub struct HIPError {
@@ -11,13 +15,25 @@ pub struct HIPError {
     expl: String
 }
 
-#[derive(Clone, Copy)]
-pub struct Function(hipFunction_t);
+#[derive(Clone, Copy, Debug)]
+pub struct Dim {
+    pub x: u32,
+    pub y: u32,
+    pub z: u32
+}
 
-#[derive(Copy, Clone)]
-pub struct Module(hipModule_t);
-
+pub struct Module (hipModule_t);
 impl Module {
+    pub fn function_count(&self) -> Result<u32, ErrorCode> {
+        let mut count = 0;
+        let result = unsafe { hipModuleGetFunctionCount(&mut count, self.0) };
+        if result == hipError_t::hipSuccess {
+            Ok(count)
+        } else {
+            Err(result)
+        }
+    }
+
     pub fn get_function(&self, name: &str) -> Result<Function, ErrorCode> {
         let mut function = null_mut();
         
@@ -27,6 +43,60 @@ impl Module {
         } else {
             Err(result)
         }
+    }
+
+    fn unload(module: hipModule_t) -> Result<(), ErrorCode> {
+        let result = unsafe { hipModuleUnload(module) };
+        if result == hipError_t::hipSuccess {
+            Ok(())
+        } else {
+            Err(result)
+        }
+    }
+}
+
+impl Drop for Module {
+    fn drop(&mut self) {
+        let _ = Module::unload(self.0);
+    }
+}
+
+pub struct Function(hipFunction_t);
+impl Function {
+    pub fn launch(&self, dim: Dim, block_dim: Dim, shared_bytes: u32, kernel_params: *mut *mut ::libc::c_void, extra: *mut *mut ::libc::c_void) -> Result<(), ErrorCode> {
+        let result = unsafe { 
+            hipModuleLaunchKernel(
+                self.0,
+                dim.x,
+                dim.y,
+                dim.z,
+                block_dim.x,
+                block_dim.y,
+                block_dim.z,
+                shared_bytes,
+                null_mut(),
+                kernel_params,
+                extra
+            )
+        };
+
+        if result == ErrorCode::hipSuccess {
+            Ok(())
+        } else {
+            Err(result)
+        }
+    }
+
+    pub fn hip_module_occupancy_max_potential_blocksize(&self, shared_mem: usize) -> Result<(i32, i32), ErrorCode> {
+        let mut grid_size = 0;
+        let mut block_size = 0;
+
+        let error = unsafe { hipModuleOccupancyMaxPotentialBlockSize(&mut grid_size, &mut block_size, self.0, shared_mem, 0) };
+        if error != hipError_t::hipSuccess {
+            return Err(error)
+        }
+
+        return Ok((grid_size, block_size));
     }
 }
 
@@ -52,11 +122,10 @@ pub fn hip_describe_err(code: ErrorCode) -> HIPError {
 
 pub fn hip_load_module(kernel: &[u8]) -> Result<Module, ErrorCode> {
     let mut module = null_mut();
-    let error = unsafe { ::hip_sys::hiprt::hipModuleLoad(&mut module, kernel.as_ptr() as *const i8) };
+    let error = unsafe { hipModuleLoadData(&mut module, kernel.as_ptr() as *const c_void) };
     if error != hipError_t::hipSuccess {
         return Err(error)
     }
 
     return Ok(Module(module));
 }
-
