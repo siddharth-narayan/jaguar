@@ -21,7 +21,7 @@ fn absolute_id() -> usize {
     wg_id as usize * dispatch.workgroup_size_x as usize + id as usize
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "gpu-kernel" fn json(table: *const ParseTable, inputs: *const Vec<Vec<Token>>) {
     println!("Hello from thread {}", absolute_id());
     return;

@@ -13,15 +13,7 @@ dependencies = [
 
 [[package]]
 name = "amdgpu-device-libs"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95f6013212f044192c3d3bb52a41aeeb0b071d6350a3df674ff27ba961865b20"
-
-[[package]]
-name = "amdgpu-device-libs-build"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d26d072a22364e13a86cd74e60d6478c44de3b9bf920e4c30765d83494985aa"
+version = "0.1.0"
 dependencies = [
  "rustflags",
 ]
@@ -128,7 +120,6 @@ name = "jaguar-amdgpu"
 version = "0.1.0"
 dependencies = [
  "amdgpu-device-libs",
- "amdgpu-device-libs-build",
  "critical-section",
  "embedded-alloc",
  "parse",

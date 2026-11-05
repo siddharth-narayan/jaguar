@@ -1,0 +1,17 @@
+[package]
+name = "amdgpu-device-libs"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["global_allocator", "hostcall", "panic_handler", "print"]
+alloc = ["device_libs"]
+global_allocator = ["alloc"]
+device_libs = []
+hostcall = ["device_libs"]
+panic_handler = []
+print = ["device_libs"]
+
+[build-dependencies]
+rustflags = "0.1.7"
+
