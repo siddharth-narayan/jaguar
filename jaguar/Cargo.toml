@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 hip = { version = "0.1.0", path = "../hip" }
+parse = { path = "../parse" }

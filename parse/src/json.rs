@@ -143,4 +143,4 @@ const STATES: &'static [TransitionTable] = &[
         )
 ];
 
-pub const JSON: ParseTable = ParseTable::new(2, &STATES);
+pub static JSON: ParseTable = ParseTable::new(2, &STATES);
