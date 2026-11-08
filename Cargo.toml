@@ -5,4 +5,5 @@ members = ["amd", "x86", "parse", "jaguar", "hip", "amdgpu-device-libs"]
 [profile.dev]
 opt-level = 2
 incremental = false # defaults to 'true' -- problem
-codegen-units = 16
+lto = "fat"
+codegen-units = 1
