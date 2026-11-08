@@ -35,12 +35,12 @@ pub fn main() {
             .or_else(|| env::var("ROCM_PATH").ok())
             .expect("No device lib path found");
 
-    println!("cargo::rustc-cdylib-link-arg={}/ockl.bc", device_libs);
-    println!("cargo::rustc-cdylib-link-arg={}/oclc_isa_version_{}.bc", device_libs, target_cpu);
-    println!("cargo::rustc-cdylib-link-arg={}/oclc_abi_version_600.bc", device_libs);
-    println!("cargo::rustc-cdylib-link-arg={}/oclc_wavefrontsize64_{}.bc", device_libs, if is_wave64 { "on" } else { "off" });
+    println!("cargo::rustc-link-arg={}/ockl.bc", device_libs);
+    println!("cargo::rustc-link-arg={}/oclc_isa_version_{}.bc", device_libs, target_cpu);
+    println!("cargo::rustc-link-arg={}/oclc_abi_version_600.bc", device_libs);
+    println!("cargo::rustc-link-arg={}/oclc_wavefrontsize64_{}.bc", device_libs, if is_wave64 { "on" } else { "off" });
 
-    println!("cargo::rustc-cdylib-link-arg=--undefined-version");
-    println!("cargo::rustc-cdylib-link-arg=--no-gc-sections");
-    println!("cargo::rustc-cdylib-link-arg=--plugin-opt=mcpu=gfx{target_cpu}");
+    println!("cargo::rustc-link-arg=--undefined-version");
+    println!("cargo::rustc-link-arg=--no-gc-sections");
+    println!("cargo::rustc-link-arg=--plugin-opt=mcpu=gfx{target_cpu}");
 }
