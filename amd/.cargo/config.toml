@@ -1,8 +1,9 @@
 # .cargo/config.toml
 [build]
-target = "amdgcn-amd-amdhsa"
+target = ".cargo/amdgcn-target.json"
 rustflags = ["-Ctarget-cpu=gfx1201"]
 # Add "-Ctarget-feature=-xnack-support" for xnack- GPUs (see above)
 
 [unstable]
-build-std = ["core", "alloc"] # Optional: "alloc"
+build-std = ["core", "alloc"]
+json-target-spec = true
