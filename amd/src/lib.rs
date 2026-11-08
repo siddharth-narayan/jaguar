@@ -1,17 +1,18 @@
 #![cfg(target_arch = "amdgpu")]
-
 #![no_std]
+#![feature(stdarch_amdgpu)]
 #![feature(abort_immediate)]
 #![feature(abi_gpu_kernel)]
 
 extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
+use core::arch::amdgpu::workgroup_id_x;
 
 use smallvec::SmallVec;
 
-use amdgpu_device_libs::prelude::*;
-
+// use amdgpu_device_libs::prelude::*;
+use amdgpu_device_libs::
 use parse::{table::{ParseTable, Transition, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
 
 fn absolute_id() -> usize {

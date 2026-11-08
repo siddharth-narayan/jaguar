@@ -3,6 +3,9 @@ name = "amdgpu-device-libs"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [features]
 default = ["global_allocator", "hostcall", "panic_handler", "print"]
 alloc = ["device_libs"]
