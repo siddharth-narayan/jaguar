@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, process::Command};
 use rustflags::Flag;
 
 pub fn main() {
@@ -35,11 +35,31 @@ pub fn main() {
             .or_else(|| env::var("ROCM_PATH").ok())
             .expect("No device lib path found");
 
-    println!("cargo::rustc-link-arg={}/ockl.bc", device_libs);
-    println!("cargo::rustc-link-arg={}/oclc_isa_version_{}.bc", device_libs, target_cpu);
-    println!("cargo::rustc-link-arg={}/oclc_abi_version_600.bc", device_libs);
-    println!("cargo::rustc-link-arg={}/oclc_wavefrontsize64_{}.bc", device_libs, if is_wave64 { "on" } else { "off" });
+    
+    let out_dir = env::var_os("OUT_DIR").unwrap().into_string().unwrap();
+    let bundle_path = format!("{out_dir}/libamdgpu-device-libs.a");
+    let _ = std::fs::remove_file(&bundle_path);
+    
+    let output = Command::new("llvm-ar").args([
+        "rcs".into(),
+        bundle_path.clone(),
+        format!("{}/ockl.bc", device_libs),
+        format!("{}/oclc_isa_version_{}.bc", device_libs, target_cpu),
+        format!("{}/oclc_abi_version_600.bc", device_libs),
+        format!("{}/oclc_wavefrontsize64_{}.bc", device_libs, if is_wave64 { "on" } else { "off" })
+    ]).spawn().expect("Failed to spawn llvm-ar").wait_with_output().unwrap().stdout;
 
+    println!("output: {}", String::try_from(output).unwrap());
+
+
+    println!("cargo::rustc-link-search=native={out_dir}");
+    println!("cargo::rustc-link-lib=static=amdgpu-device-libs");
+    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
+    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
+    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
+
+    println!("cargo::rustc-link-arg=-Clinker-plugin-lto");
+    println!("cargo::rustc-link-arg=-Zemit-thin-lto=no");
     println!("cargo::rustc-link-arg=--undefined-version");
     println!("cargo::rustc-link-arg=--no-gc-sections");
     println!("cargo::rustc-link-arg=--plugin-opt=mcpu=gfx{target_cpu}");

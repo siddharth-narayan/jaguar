@@ -84,6 +84,7 @@
             pkg-config
             clang
 
+            llvmPackages_20.libllvm
             rustPlatform.bindgenHook
 
             openssl
