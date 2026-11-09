@@ -1,6 +1,6 @@
-use std::{ffi::c_void, fs, mem, ptr::null_mut};
+use std::{collections::HashSet, ffi::c_void, fs, mem, ptr::null_mut};
 
-use hip::{Dim, HIPError, hip_describe_err, hip_init, hip_load_module};
+use hip::{Dim, HIPDeviceAllocator, HIPError, hip_describe_err, hip_device_sync, hip_init, hip_load_module};
 use parse::{json::{JSON, Token}, table::ParseTable};
 
 static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
@@ -21,11 +21,18 @@ pub fn main() -> Result<(), HIPError> {
     }
 
     
-    let mut args = [ unsafe { mem::transmute(&raw const JSON) }, inputs.as_mut_ptr() as *mut c_void ];
+    // let mut args = [ unsafe { mem::transmute(&raw const JSON) }, inputs.as_mut_ptr() as *mut c_void ];
+    let allocator: HIPDeviceAllocator = HIPDeviceAllocator::new();
+    // let mut v: Box<HashSet<usize, HIPDeviceAllocator>, HIPDeviceAllocator> = Box::new_in(HashSet::new_in(allocator), allocator);
+    let mut b = Box::new_in(false, allocator);
+    let mut args = [&mut b as *mut _ as *mut c_void];
+    kernel.launch(Dim {x: 1, y: 1, z: 1}, Dim {x: 4, y: 1, z: 1}, 4096, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
 
-    kernel.launch(Dim {x: 32, y: 1, z: 1}, Dim {x: 1024, y: 1, z: 1}, 4096, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+    if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
+        println!("Failed to sync: {:#?}", e);
+    }
 
-
+    println!("after: {}", b);
 
     // ...hipMalloc, hipMemcpy, hipModuleLaunchKernel, hipDeviceSynchronize, hipFree the same way
 

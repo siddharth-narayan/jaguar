@@ -1,4 +1,4 @@
-use std::{ffi::{CStr, CString, c_void}, mem::{self, ManuallyDrop}, ptr::null_mut};
+use std::{alloc::{AllocError, Allocator}, ffi::{CStr, CString, c_void}, mem::{self, ManuallyDrop}, ptr::{NonNull, null, null_mut}};
 
 #[allow(non_camel_case_types)]  
 #[allow(non_upper_case_globals)]
@@ -6,7 +6,7 @@ use std::{ffi::{CStr, CString, c_void}, mem::{self, ManuallyDrop}, ptr::null_mut
 pub mod bindings;
 use bindings::{hipError_t, hipError_t as ErrorCode, hipFunction_t, hipGetErrorName, hipModuleGetFunctionCount, hipGetErrorString, hipInit, hipModule_t, hipModuleGetFunction, hipModuleLaunchKernel, hipModuleLoad, hipModuleOccupancyMaxPotentialBlockSize, hipModuleUnload, hipStream_t};
 
-use crate::bindings::hipModuleLoadData;
+use crate::bindings::{hipDeviceSynchronize, hipFree, hipMalloc, hipModuleLoadData};
 
 #[derive(Clone, Debug)]
 pub struct HIPError {
@@ -128,4 +128,39 @@ pub fn hip_load_module(kernel: &[u8]) -> Result<Module, ErrorCode> {
     }
 
     return Ok(Module(module));
+}
+
+pub fn hip_device_sync() -> Result<(), ErrorCode> {
+    let error = unsafe { hipDeviceSynchronize() };
+    if error != hipError_t::hipSuccess {
+        return Err(error)
+    }
+
+    return Ok(());
+}
+
+#[derive(Clone, Copy)]
+pub struct HIPDeviceAllocator();
+impl HIPDeviceAllocator {
+    pub fn new() -> HIPDeviceAllocator {
+        HIPDeviceAllocator()
+    }
+}
+
+unsafe impl Allocator for HIPDeviceAllocator {
+    fn allocate(&self, layout: std::alloc::Layout) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
+        let mut ptr: *mut u8 = null_mut();
+        _ = unsafe { hipMalloc(&raw mut ptr as _, layout.size()) };
+
+        if ptr.is_null() {
+            return Err(AllocError)
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(ptr, layout.size()) };
+        Ok(NonNull::from_ref(slice))
+    }
+
+    unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, layout: std::alloc::Layout) {
+        _ = unsafe { hipFree(ptr.as_ptr() as _) }
+    }
 }

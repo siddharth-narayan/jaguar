@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 use core::arch::amdgpu::workgroup_id_x;
 
 use smallvec::SmallVec;
-
+use amdgpu_device_libs::print;
 use amdgpu_device_libs::prelude::*;
 use parse::{table::{ParseTable, Transition, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
 
@@ -22,9 +22,16 @@ fn absolute_id() -> usize {
 }
 
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn json(table: *const ParseTable, inputs: *const Vec<Vec<Token>>) {
-    println!("Hello from thread {}", absolute_id());
+pub extern "gpu-kernel" fn json(out: *mut bool) { 
+    println!("Hello, World");
+    unsafe { *out = true };
+    // out.insert(id);
     return;
+    // unsafe { *out.add(id) = id as u32 + 1; }
+}
+// pub extern "gpu-kernel" fn json(table: *const ParseTable, inputs: *const Vec<Vec<Token>>) {
+//     print("Hello world!\n");
+//     return;
     
     
     // let table = table.as_ref_unchecked();
@@ -101,7 +108,7 @@ pub extern "gpu-kernel" fn json(table: *const ParseTable, inputs: *const Vec<Vec
     //         },
     //     };
     // };
-}
+// }
 
 
 struct Cs;
