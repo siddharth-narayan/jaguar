@@ -7,8 +7,8 @@
 extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
-use core::arch::amdgpu::workgroup_id_x;
 
+use core::arch::amdgpu::wavefrontsize;
 use smallvec::SmallVec;
 use amdgpu_device_libs::print;
 use amdgpu_device_libs::prelude::*;
@@ -18,22 +18,14 @@ fn absolute_id() -> usize {
     let wg_id = workgroup_id_x();
     let id = workitem_id_x();
     let dispatch = dispatch_ptr();
-    wg_id as usize * dispatch.workgroup_size_x as usize + id as usize
+    wg_id as usize * wavefrontsize() as usize + id as usize
 }
 
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn json(out: *mut bool) { 
-    println!("Hello, World");
-    unsafe { *out = true };
-    // out.insert(id);
+pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Vec<Vec<Token>>) { 
+    println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
     return;
-    // unsafe { *out.add(id) = id as u32 + 1; }
-}
-// pub extern "gpu-kernel" fn json(table: *const ParseTable, inputs: *const Vec<Vec<Token>>) {
-//     print("Hello world!\n");
-//     return;
-    
-    
+
     // let table = table.as_ref_unchecked();
     
     // let mut state_stack: VecDeque<(usize, usize)> = VecDeque::with_capacity(1024);
@@ -108,26 +100,15 @@ pub extern "gpu-kernel" fn json(out: *mut bool) {
     //         },
     //     };
     // };
-// }
-
-
-struct Cs;
-critical_section::set_impl!(Cs);
-unsafe impl critical_section::Impl for Cs {
-    unsafe fn acquire() -> critical_section::RawRestoreState { }
-    unsafe fn release(_: critical_section::RawRestoreState) { }
 }
 
-// #[no_mangle]
-// pub unsafe extern "C" fn memcmp(a: *const u8, b: *const u8, n: usize) -> i32 {
-//     let mut i = 0;
-//     while i < n {
-//         let x = *a.add(i);
-//         let y = *b.add(i);
-//         if x != y {
-//             return x as i32 - y as i32;
-//         }
-//         i += 1;
-//     }
-//     0
-// }
+#[unsafe(no_mangle)]
+pub extern "gpu-kernel" fn brc(input: &[u8]) { 
+    let input_size = input.len();
+    let total_count = 64;
+    let absolute_id = absolute_id();
+    let slice_size = input_size / total_count;
+    
+    let start_pos = (input_size - 1) - (absolute_id * slice_size);
+    let end_pos = start_pos - slice_size
+}

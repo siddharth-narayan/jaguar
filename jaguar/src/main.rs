@@ -16,17 +16,16 @@ pub fn main() -> Result<(), HIPError> {
     println!("max pot: {:#?}", kernel.hip_module_occupancy_max_potential_blocksize(4096).map_err(hip_describe_err)?);
     
     let mut inputs: Vec<Vec<Token>> = Vec::new();
-    for _ in 0..32*1024 {
+    for _ in 0..32 * 1024 {
         inputs.push(Vec::new());
     }
 
-    
     // let mut args = [ unsafe { mem::transmute(&raw const JSON) }, inputs.as_mut_ptr() as *mut c_void ];
     let allocator: HIPDeviceAllocator = HIPDeviceAllocator::new();
     // let mut v: Box<HashSet<usize, HIPDeviceAllocator>, HIPDeviceAllocator> = Box::new_in(HashSet::new_in(allocator), allocator);
     let mut b = Box::new_in(false, allocator);
-    let mut args = [&mut b as *mut _ as *mut c_void];
-    kernel.launch(Dim {x: 1, y: 1, z: 1}, Dim {x: 4, y: 1, z: 1}, 4096, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+    let mut args = []; //&mut b as *mut _ as *mut c_void];
+    kernel.launch(Dim {x: 4, y: 1, z: 1}, Dim {x: 4, y: 1, z: 1}, 4096, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
 
     if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
         println!("Failed to sync: {:#?}", e);
