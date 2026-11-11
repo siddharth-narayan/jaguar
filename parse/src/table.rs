@@ -2,7 +2,7 @@
 
 extern crate alloc;
 
-use crate::json::{JsonFragmentType, Token::{self, *}};
+// use crate::json::{JsonFragmentType, Token::{self, *}};
 
 #[derive(Copy, Clone)]
 pub enum Transition {
@@ -13,17 +13,17 @@ pub enum Transition {
     Uncall
 }
 
-pub struct TransitionTable {
-    transitions: &'static [(Token, Transition)],
-    unmatched: Transition
+pub struct TransitionTable<T: 'static> {
+    transitions: &'static [(usize, T)],
+    unmatched: T
 }
 
-impl TransitionTable {
-    pub const fn new(transitions: &'static [(Token, Transition)]) -> TransitionTable {
+impl<T> TransitionTable<T> {
+    pub const fn new(transitions: &'static [(usize, Transition)]) -> TransitionTable<T> {
         TransitionTable { transitions, unmatched: Transition::None { next: ParseTable::FAIL } }
     }
 
-    pub const fn new_ex(transitions: &'static [(Token, Transition)], unmatched: Transition) -> TransitionTable {
+    pub const fn new_ex(transitions: &'static [(usize, Transition)], unmatched: Transition) -> TransitionTable<T> {
         TransitionTable { transitions, unmatched}
     }
 
