@@ -1,43 +1,62 @@
-use core::sync::atomic::{AtomicBool, AtomicI16, AtomicI32, AtomicU32, AtomicU128};
+use core::sync::atomic::{Atomic, Ordering::{Relaxed, SeqCst}};
 
 use alloc::{boxed::Box, vec::Vec};
 use smallvec::SmallVec;
 
 use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL};
 
+const HASH_BUCKET_COUNT: usize = 2usize.pow(21);
+
 pub struct HashEntry {
-    name: AtomicU128,
-    min: AtomicI16,
-    max: AtomicI16,
-    total: AtomicI32,
-    station_count: AtomicU32
+    // taken: Atomic<bool>,
+    name: Atomic<u64>,
+    min: Atomic<i16>,
+    max: Atomic<i16>,
+    total: Atomic<i32>,
+    station_count: Atomic<u32>
+}
+
+impl HashEntry {
+    pub fn update(&mut self, measurement: i16) {
+        self.min.fetch_min(measurement, Relaxed);
+        self.max.fetch_max(measurement, Relaxed);
+        self.total.fetch_add(measurement as i32, Relaxed);
+        self.station_count.fetch_add(1, Relaxed);
+    }
 }
 
 pub struct HashTable {
-    // indexed by u16
-    inner: Box<[HashEntry; 2^21]>
+    inner: Box<[HashEntry; HASH_BUCKET_COUNT]>
 }
 
 impl HashTable {
     pub fn new() -> HashTable {
+        // Safe because zeroed HashTable is valid
+        let mut table = unsafe { Box::<[HashEntry; HASH_BUCKET_COUNT]>::new_zeroed().assume_init() };
+        for entry in &mut table {
+            entry.min = 999.into();
+            entry.max = (-999).into();
+        }
+
         HashTable {
-            // Safe because zeroed HashTable is valid
-            inner: unsafe { Box::new_zeroed().assume_init() }
+            inner: table
         }
     }
 
-    pub fn update(&mut self, mut key: usize, name: u128, value: i16) {
-        key = key % 2^21;
+    pub fn update(&mut self, mut key: usize, name: u64, measurement: i16) {
+        key = key % HASH_BUCKET_COUNT;
 
-        while let entry = unsafe { self.inner.get_unchecked_mut(key as usize) } && entry.name != name {
+        while 
+            let entry = unsafe { self.inner.get_unchecked_mut(key) } 
+            && let update_status = entry.name.compare_exchange(0, name, SeqCst, SeqCst)
+            && !update_status.is_err_and(|already_existing_name| already_existing_name == name) {
+
             key += 1;
+            key = key % HASH_BUCKET_COUNT;
         }
 
         let entry = unsafe { self.inner.get_unchecked_mut(key as usize) };
-        entry.n
-        if unsafe { self.inner.get(key as usize) }.taken.update(core::sync::atomic::Ordering::Relaxed, fetch_order, true) {
-
-        }
+        entry.update(measurement);
     }
 }
 

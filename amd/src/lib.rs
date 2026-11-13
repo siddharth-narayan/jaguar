@@ -7,12 +7,15 @@
 extern crate alloc;
 use alloc::collections::VecDeque;
 use alloc::vec::Vec;
-
+use parse::brc::BRC;
+use parse::brc::HashTable;
+use parse::brc::BrcTransition;
 use core::arch::amdgpu::wavefrontsize;
+use core::slice;
 use smallvec::SmallVec;
 use amdgpu_device_libs::print;
 use amdgpu_device_libs::prelude::*;
-use parse::{table::{ParseTable, Transition, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
+use parse::{table::{ParseTable, TransitionTable}, json::{JSON, JsonFragment, JsonFragmentType, Token}};
 
 fn absolute_id() -> usize {
     let wg_id = workgroup_id_x();
@@ -103,12 +106,42 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
 }
 
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn brc(input: &[u8]) { 
-    let input_size = input.len();
+pub extern "gpu-kernel" fn brc(input: *const u8, input_size: u32, table: *mut HashTable) {
+    let input = unsafe { slice::from_raw_parts(input, input_size as usize) };
     let total_count = 64;
     let absolute_id = absolute_id();
-    let slice_size = input_size / total_count;
+    let slice_size = input.len() / total_count;
     
-    let start_pos = (input_size - 1) - (absolute_id * slice_size);
-    let end_pos = start_pos - slice_size
+    let start_pos = (input.len() - 1) - (absolute_id * slice_size);
+    let end_pos = start_pos - slice_size;
+    let mut pos = start_pos;
+    let mut state = 2;
+    
+    let mut key = 0;
+    let mut name = 0;
+    let mut current_measurment = 0;
+
+    loop {
+        let transition_table = unsafe  { BRC.get(state).unwrap_unchecked() };
+
+        let current_byte = unsafe { *input.get_unchecked(pos) };
+        match transition_table.get(current_byte) {
+            BrcTransition::Negate { next } => {
+                current_measurement = -current_measurement;
+                state = *next
+            },
+
+            BrcTransition::PushMult { next } => {
+                current_measurement = (current_measurement * 10) + current_byte
+                state = *next
+            },
+
+            BrcTransition::Hash { next } => {
+                state = *next
+            }
+        }
+    }
+
+    
+
 }

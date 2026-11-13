@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(generic_atomic)]
 
 extern crate alloc;
 
