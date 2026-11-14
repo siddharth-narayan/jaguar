@@ -40,7 +40,7 @@ pub fn main() {
     let bundle_path = format!("{out_dir}/libamdgpu-device-libs.a");
     let _ = std::fs::remove_file(&bundle_path);
     
-    let output = Command::new("llvm-ar").args([
+    let output = Command::new("ar").args([
         "rcs".into(),
         bundle_path.clone(),
         format!("{}/ockl.bc", device_libs),
@@ -54,13 +54,4 @@ pub fn main() {
 
     println!("cargo::rustc-link-search=native={out_dir}");
     println!("cargo::rustc-link-lib=static=amdgpu-device-libs");
-    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
-    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
-    // println!("cargo::rustc-flags=--mlink-builtin-bitcode=
-
-    println!("cargo::rustc-link-arg=-Clinker-plugin-lto");
-    println!("cargo::rustc-link-arg=-Zemit-thin-lto=no");
-    println!("cargo::rustc-link-arg=--undefined-version");
-    println!("cargo::rustc-link-arg=--no-gc-sections");
-    println!("cargo::rustc-link-arg=--plugin-opt=mcpu=gfx{target_cpu}");
 }
