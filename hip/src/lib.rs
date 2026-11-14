@@ -139,7 +139,7 @@ pub fn hip_device_sync() -> Result<(), ErrorCode> {
     return Ok(());
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct HIPDeviceAllocator();
 impl HIPDeviceAllocator {
     pub fn new() -> HIPDeviceAllocator {

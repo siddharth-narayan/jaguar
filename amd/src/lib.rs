@@ -1,3 +1,4 @@
+#![allow(rust_analyzer::inactive_code)]
 #![cfg(target_arch = "amdgpu")]
 #![no_std]
 #![feature(stdarch_amdgpu)]
@@ -106,7 +107,9 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
 }
 
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn brc(input: *const u8, input_size: u32, table: *mut HashTable) {
+pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: *mut HashTable) {
+    println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
+    println!("input addr: {:#?} equals {} size: {}", input, unsafe { *input }, unsafe { *input_size });
     let input = unsafe { slice::from_raw_parts(input, input_size as usize) };
     let table = unsafe { &mut *table };
 
@@ -115,34 +118,44 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: u32, table: *mut Ha
     let slice_size = input.len() / total_count;
     
     let start_pos = (input.len() - 1) - (absolute_id * slice_size);
-    let end_pos = start_pos - slice_size;
+    let end_pos = (start_pos + 1) - slice_size;
     let mut pos = start_pos;
     let mut state = 2;
     
     let mut key = 0;
     let mut name = 0;
     let mut current_measurement: i16 = 0;
-
+    println!("Loop time!!");
     loop {
-        let transition_table = unsafe  { BRC.get(state).unwrap_unchecked() };
+        if pos < end_pos {
+            break;
+        }
 
-        let current_byte = unsafe { *input.get_unchecked(pos) };
+        let transition_table = unsafe  { BRC.get(state).unwrap() };
+
+        let current_byte = unsafe { *input.get(pos).unwrap() };
         match transition_table.get(current_byte) {
             BrcTransition::Complete { next } => {
+                println!("Complete: key: {}, name: {}, measurement: {}", key, name, current_measurement);
                 table.update(key, name, current_measurement);
                 state = *next
             }
             BrcTransition::Negate { next } => {
+                println!("Negation");
+
                 current_measurement = -current_measurement;
                 state = *next
             },
 
             BrcTransition::PushMult { next } => {
+                println!("PushMult");
+
                 current_measurement = (current_measurement * 10) + (current_byte as i16);
                 state = *next
             },
 
             BrcTransition::Hash { next } => {
+                println!("Hash");
                 name = (name * 255) + current_byte as u64;
                 state = *next
             }

@@ -8,15 +8,13 @@ use parse::{brc::HashTable, json::{JSON, Token}, table::ParseTable};
 static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
 
 pub fn main() -> Result<(), HIPError> {
-    let text = fs::read("example.txt").unwrap();
-    let allocator: HIPDeviceAllocator = HIPDeviceAllocator::new();
+    let mut text = fs::read("example.txt").unwrap().to_vec_in(HIPDeviceAllocator());
     hip_init(0).map_err(hip_describe_err)?;
-    let text = text.to_vec_in(allocator);
 
     println!("niite");
     let module = hip_load_module(KERNEL).map_err(hip_describe_err)?;
     println!("count: {}", module.function_count().map_err(hip_describe_err)?);
-    let kernel = module.get_function("json").map_err(hip_describe_err)?;
+    let kernel = module.get_function("brc").map_err(hip_describe_err)?;
 
 
     println!("max pot: {:#?}", kernel.hip_module_occupancy_max_potential_blocksize(4096).map_err(hip_describe_err)?);
@@ -31,20 +29,23 @@ pub fn main() -> Result<(), HIPError> {
     
     // let mut v: Box<HashSet<usize, HIPDeviceAllocator>, HIPDeviceAllocator> = Box::new_in(HashSet::new_in(allocator), allocator);
     // let mut b = Box::new_in(false, allocator);
-    let mut table = Box::new_in(HashTable::new(), HIPDeviceAllocator());
-    
+    let mut table = HashTable::new_in(HIPDeviceAllocator());
+    let mut len = Box::new_in(text.len() as u32, HIPDeviceAllocator());
     let mut args = [
-        text.as_ptr() as *mut c_void,
-        text.len() as *mut c_void,
-        table.as_mut() as *mut _ as *mut c_void
+        &mut text.as_mut_ptr() as *mut *mut _ as *mut c_void,
+        &mut len as *mut _ as *mut c_void,
+        &mut Box::as_mut_ptr(&mut table) as *mut *mut _ as *mut c_void
     ];
 
-    kernel.launch(Dim {x: 1, y: 1, z: 1}, Dim {x: 1, y: 1, z: 1}, 4096, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+    println!("alloced and ddi everything");
+    kernel.launch(Dim {x: 1, y: 1, z: 1}, Dim {x: 1, y: 1, z: 1}, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
 
     if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
         println!("Failed to sync: {:#?}", e);
     }
 
+    drop(text);
+    drop(len);
     println!("after: {:#?}", table);
 
     // ...hipMalloc, hipMemcpy, hipModuleLaunchKernel, hipDeviceSynchronize, hipFree the same way

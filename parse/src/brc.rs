@@ -1,4 +1,4 @@
-use core::sync::atomic::{Atomic, Ordering::{Relaxed, SeqCst}};
+use core::{alloc::Allocator, sync::atomic::{Atomic, Ordering::{Relaxed, SeqCst}}};
 use alloc::fmt::Debug;
 
 use alloc::{boxed::Box, vec::Vec};
@@ -6,9 +6,10 @@ use smallvec::SmallVec;
 
 use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL};
 
-const HASH_BUCKET_COUNT: usize = 2usize.pow(21);
+const HASH_BUCKET_COUNT: usize = 2usize.pow(18);
 
 #[derive(Debug)]
+#[repr(C)]
 pub struct HashEntry {
     // taken: Atomic<bool>,
     name: Atomic<u64>,
@@ -27,22 +28,21 @@ impl HashEntry {
     }
 }
 
+#[repr(C)]
 pub struct HashTable {
-    inner: Box<[HashEntry; HASH_BUCKET_COUNT]>
+    inner: [HashEntry; HASH_BUCKET_COUNT]
 }
 
 impl HashTable {
-    pub fn new() -> HashTable {
+    pub fn new_in<A: Allocator>(allocator: A) -> Box<HashTable, A> {
         // Safe because zeroed HashTable is valid
-        let mut table = unsafe { Box::<[HashEntry; HASH_BUCKET_COUNT]>::new_zeroed().assume_init() };
-        for entry in &mut table {
+        let mut table = unsafe { Box::<HashTable, A>::new_zeroed_in(allocator).assume_init() };
+        for entry in &mut table.inner {
             entry.min = 999.into();
             entry.max = (-999).into();
         }
 
-        HashTable {
-            inner: table
-        }
+        table
     }
 
     pub fn update(&mut self, mut key: usize, name: u64, measurement: i16) {
