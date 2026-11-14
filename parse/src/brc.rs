@@ -1,4 +1,5 @@
 use core::sync::atomic::{Atomic, Ordering::{Relaxed, SeqCst}};
+use alloc::fmt::Debug;
 
 use alloc::{boxed::Box, vec::Vec};
 use smallvec::SmallVec;
@@ -7,6 +8,7 @@ use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL};
 
 const HASH_BUCKET_COUNT: usize = 2usize.pow(21);
 
+#[derive(Debug)]
 pub struct HashEntry {
     // taken: Atomic<bool>,
     name: Atomic<u64>,
@@ -60,12 +62,19 @@ impl HashTable {
     }
 }
 
+impl Debug for HashTable {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.inner.iter().filter(|item| item.name.load(Relaxed) != 0)).finish()
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum BrcTransition {
     // Can be used as a none transition, maybe need to split them, but it's an optimization for needing less transition types
     Negate { next: usize },
     PushMult { next: usize },
     Hash { next: usize },
+    Complete { next: usize }
 }
 
 #[rustfmt::skip]
@@ -92,7 +101,8 @@ const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
 
     // Second digit, or negative - State 6
     TransitionTable::new(&[
-        ('-' as u8, BrcTransition::Negate { next: 8 })
+        ('-' as u8, BrcTransition::Negate { next: 8 }),
+        (';' as u8, BrcTransition::Negate { next: 8 })
     ], BrcTransition::PushMult { next: 7 }),
 
     // Possibly the negative after the second digit - State 7
@@ -105,8 +115,8 @@ const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
 
     // Full station name - State 9
     TransitionTable::new(&[
-        ('\n' as u8, BrcTransition::Hash { next: 9 })
-    ], BrcTransition::Hash { next: 3 }),
+        ('\n' as u8, BrcTransition::Complete { next: 3 })
+    ], BrcTransition::Hash { next: 9 }),
 
 ];
 

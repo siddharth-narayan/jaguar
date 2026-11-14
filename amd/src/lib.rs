@@ -108,7 +108,9 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
 #[unsafe(no_mangle)]
 pub extern "gpu-kernel" fn brc(input: *const u8, input_size: u32, table: *mut HashTable) {
     let input = unsafe { slice::from_raw_parts(input, input_size as usize) };
-    let total_count = 64;
+    let table = unsafe { &mut *table };
+
+    let total_count = 1;
     let absolute_id = absolute_id();
     let slice_size = input.len() / total_count;
     
@@ -119,29 +121,31 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: u32, table: *mut Ha
     
     let mut key = 0;
     let mut name = 0;
-    let mut current_measurment = 0;
+    let mut current_measurement: i16 = 0;
 
     loop {
         let transition_table = unsafe  { BRC.get(state).unwrap_unchecked() };
 
         let current_byte = unsafe { *input.get_unchecked(pos) };
         match transition_table.get(current_byte) {
+            BrcTransition::Complete { next } => {
+                table.update(key, name, current_measurement);
+                state = *next
+            }
             BrcTransition::Negate { next } => {
                 current_measurement = -current_measurement;
                 state = *next
             },
 
             BrcTransition::PushMult { next } => {
-                current_measurement = (current_measurement * 10) + current_byte
+                current_measurement = (current_measurement * 10) + (current_byte as i16);
                 state = *next
             },
 
             BrcTransition::Hash { next } => {
+                name = (name * 255) + current_byte as u64;
                 state = *next
             }
         }
     }
-
-    
-
 }
