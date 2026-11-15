@@ -12,7 +12,7 @@ pub fn main() -> Result<(), HIPError> {
     let mut text = Vec::new_in(HIPDeviceAllocator());
     text.push('\n' as u8); // IMPORTANT! Without this, the first processor will continue backwards beyond the buffer
 
-    let mut file = File::open("example.txt").unwrap();
+    let mut file = File::open("example-5M.txt").unwrap();
     let len = file.stream_len().unwrap() as usize;
     text.reserve(len);
     unsafe {
@@ -32,8 +32,10 @@ pub fn main() -> Result<(), HIPError> {
         &mut Box::as_mut_ptr(&mut table) as *mut *mut _ as *mut c_void
     ];
 
+    // println!("max pot: {:#?}", kernel.hip_module_occupancy_max_potential_blocksize(0).map_err(hip_describe_err)?);
+
     let time = SystemTime::now();
-    kernel.launch(Dim {x: 1, y: 1, z: 1}, Dim {x: 8, y: 1, z: 1}, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+    kernel.launch(Dim {x: 32, y: 1, z: 1}, Dim {x: 1024, y: 1, z: 1}, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
 
     if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
         println!("Failed to sync: {:#?}", e);

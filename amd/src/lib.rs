@@ -112,7 +112,7 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
     let input = unsafe { slice::from_raw_parts(input, *input_size as usize) };
     let table = unsafe { &mut *table };
 
-    let total_count = 8;
+    let total_count = 32768;
     let absolute_id = absolute_id();
     let slice_size = input.len() / total_count;
     

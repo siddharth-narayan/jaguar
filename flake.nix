@@ -92,6 +92,8 @@
             alejandra
             toolchain
             rocmPackages.clr
+            rocmPackages.rocprofiler-sdk
+            rocmPackages.rocprof-compute-viewer
             rocmPackages.hip-common
             rocmPackages.rocm-runtime
 
