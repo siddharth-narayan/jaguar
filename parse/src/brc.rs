@@ -102,19 +102,25 @@ const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
 
     // Second digit, or negative, or semicolon - State 6
     TransitionTable::new(&[
-        ('-' as u8, BrcTransition::Negate { next: 8 }),
-        (';' as u8, BrcTransition::None { next: 8 })
+        ('-' as u8, BrcTransition::Negate { next: 9 }),
+        (';' as u8, BrcTransition::None { next: 9 })
     ], BrcTransition::PushMult { next: 7 }),
 
     // Possibly the negative after the second digit - State 7
     TransitionTable::new(&[
-        ('-' as u8, BrcTransition::Negate { next: 8 })
-    ], BrcTransition::None { next: 8 }),
+        ('-' as u8, BrcTransition::Negate { next: 8 }),
+        (';' as u8, BrcTransition::None { next: 9 })
+    ], BrcTransition::None { next: 1 }),
 
-    // Full station name - State 8
+    // The semi after the negative after the second digit >:(
+    TransitionTable::new(&[
+        (';' as u8, BrcTransition::None { next: 9 })
+    ], BrcTransition::None { next: 1 }),
+
+    // Full station name - State 9
     TransitionTable::new(&[
         ('\n' as u8, BrcTransition::Complete { next: 3 })
-    ], BrcTransition::Hash { next: 8 }),
+    ], BrcTransition::Hash { next: 9 }),
 
 ];
 

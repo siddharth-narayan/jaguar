@@ -109,17 +109,17 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
 const ASCII_ZERO_CODEPOINT: u8 = 48;
 #[unsafe(no_mangle)]
 pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: *mut HashTable) {
-    println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
-    println!("input addr: {:#?} equals {} size: {}", input, unsafe { *input }, unsafe { *input_size });
     let input = unsafe { slice::from_raw_parts(input, *input_size as usize) };
-    // println!("{} == {} hopefully", core::mem::size_of<u32>(), core::meme::size_of(usize));
-    println!("input len after {}", input.len());
     let table = unsafe { &mut *table };
 
-    let total_count = 1;
+    let total_count = 8;
     let absolute_id = absolute_id();
     let slice_size = input.len() / total_count;
     
+    let mut message_id = 0;
+    // println!("let start_pos = ({} - 1) - ({} * {})", input.len(), absolute_id, slice_size);
+    // println!("---");
+
     let start_pos = (input.len() - 1) - (absolute_id * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
     let mut pos = start_pos;
@@ -129,22 +129,26 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
     let mut name = 0;
     let mut current_measurement: i16 = 0;
     let mut current_multiplier = 1;
-    println!("Loop time!!");
     loop {
-        println!("state: {}, pos: {} input: {:#?}", state, pos, *input.get(pos).unwrap() as char);
+        // println!("worker {} ({}): state {}, pos: {} input: {:#?}", absolute_id, message_id, state, pos, *input.get(pos).unwrap() as char);
+        message_id += 1;
         let transition_table = unsafe  { BRC.get(state).unwrap() };
 
         let current_byte = unsafe { *input.get(pos).unwrap() };
         match transition_table.get(current_byte) {
             BrcTransition::Complete { next } => {
-                println!("Complete: key: {}, name: {}, measurement: {}", key, name, current_measurement);
+                // println!("worker {} ({}): Complete: key: {}, name: {}, measurement: {}", absolute_id, message_id, key, name, current_measurement);
+                message_id += 1;
                 table.update(key, name, current_measurement);
-                println!("after update");
                 current_measurement = 0;
                 current_multiplier = 1;
                 key = 0;
                 name = 0; 
-                state = *next
+                state = *next;
+
+                if pos <= end_pos {
+                    break;
+                }
             },
             
             BrcTransition::None { next } => {
@@ -152,8 +156,6 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
             },
 
             BrcTransition::Negate { next } => {
-                println!("Negation");
-
                 current_measurement = -current_measurement;
                 state = *next
             },
@@ -162,11 +164,13 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
                 current_measurement = (((current_byte - ASCII_ZERO_CODEPOINT) as i16) * current_multiplier) + current_measurement;
                 current_multiplier *= 10;
                 state = *next;
-                println!("PushMult measurement {}", current_measurement);
+                // println!("worker {} ({}): PushMult measurement {}", absolute_id, message_id, current_measurement);
+                message_id += 1;
             },
 
             BrcTransition::Hash { next } => {
-                println!("Hash");
+                // println!("worker {} ({}): Hash", absolute_id, message_id);
+                message_id += 1;
                 name = (name.wrapping_mul(255)) + current_byte as u64;
                 state = *next
             }
@@ -175,7 +179,6 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
         if pos <= end_pos {
             break;
         }
-        
         pos -= 1;
     }
 }
