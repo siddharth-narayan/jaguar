@@ -51,7 +51,7 @@ impl HashTable {
         while 
             let entry = unsafe { self.inner.get_unchecked_mut(key) } 
             && let update_status = entry.name.compare_exchange(0, name, SeqCst, SeqCst)
-            && !update_status.is_err_and(|already_existing_name| already_existing_name == name) {
+            && update_status.is_err_and(|already_existing_name| already_existing_name != name) {
 
             key += 1;
             key = key % HASH_BUCKET_COUNT;
@@ -71,6 +71,7 @@ impl Debug for HashTable {
 #[derive(Copy, Clone)]
 pub enum BrcTransition {
     // Can be used as a none transition, maybe need to split them, but it's an optimization for needing less transition types
+    None { next: usize },
     Negate { next: usize },
     PushMult { next: usize },
     Hash { next: usize },
@@ -80,43 +81,40 @@ pub enum BrcTransition {
 #[rustfmt::skip]
 const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
     // Finish - State 0
-    TransitionTable::new(&[], BrcTransition::Negate { next: 0 }),
+    TransitionTable::new(&[], BrcTransition::None { next: 0 }),
 
     // Fail - State 1
-    TransitionTable::new(&[], BrcTransition::Negate { next: 1 }),
+    TransitionTable::new(&[], BrcTransition::None { next: 1 }),
     
     // Search for newline - State 2
     TransitionTable::new(&[
-        ('\n' as u8, BrcTransition::Negate { next: 3 })
-    ], BrcTransition::Negate { next: 2 }),
+        ('\n' as u8, BrcTransition::None { next: 3 })
+    ], BrcTransition::None { next: 2 }),
 
     // Single fractional digit - State 3
     TransitionTable::new(&[], BrcTransition::PushMult { next: 4 }),
     
     // Decimal point - State 4
-    TransitionTable::new(&[], BrcTransition::Negate { next: 5 }),
+    TransitionTable::new(&[], BrcTransition::None { next: 5 }),
 
     // First digit (always present?) - State 5
     TransitionTable::new(&[], BrcTransition::PushMult { next: 6 }),
 
-    // Second digit, or negative - State 6
+    // Second digit, or negative, or semicolon - State 6
     TransitionTable::new(&[
         ('-' as u8, BrcTransition::Negate { next: 8 }),
-        (';' as u8, BrcTransition::Negate { next: 8 })
+        (';' as u8, BrcTransition::None { next: 8 })
     ], BrcTransition::PushMult { next: 7 }),
 
     // Possibly the negative after the second digit - State 7
     TransitionTable::new(&[
         ('-' as u8, BrcTransition::Negate { next: 8 })
-    ], BrcTransition::PushMult { next: 9 }),
+    ], BrcTransition::None { next: 8 }),
 
-    // Semicolon - State 8
-    TransitionTable::new(&[], BrcTransition::Negate { next: 9 }),
-
-    // Full station name - State 9
+    // Full station name - State 8
     TransitionTable::new(&[
         ('\n' as u8, BrcTransition::Complete { next: 3 })
-    ], BrcTransition::Hash { next: 9 }),
+    ], BrcTransition::Hash { next: 8 }),
 
 ];
 

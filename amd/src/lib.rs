@@ -106,11 +106,14 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
     // };
 }
 
+const ASCII_ZERO_CODEPOINT: u8 = 48;
 #[unsafe(no_mangle)]
 pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: *mut HashTable) {
     println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
     println!("input addr: {:#?} equals {} size: {}", input, unsafe { *input }, unsafe { *input_size });
-    let input = unsafe { slice::from_raw_parts(input, input_size as usize) };
+    let input = unsafe { slice::from_raw_parts(input, *input_size as usize) };
+    // println!("{} == {} hopefully", core::mem::size_of<u32>(), core::meme::size_of(usize));
+    println!("input len after {}", input.len());
     let table = unsafe { &mut *table };
 
     let total_count = 1;
@@ -125,12 +128,10 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
     let mut key = 0;
     let mut name = 0;
     let mut current_measurement: i16 = 0;
+    let mut current_multiplier = 1;
     println!("Loop time!!");
     loop {
-        if pos < end_pos {
-            break;
-        }
-
+        println!("state: {}, pos: {} input: {:#?}", state, pos, *input.get(pos).unwrap() as char);
         let transition_table = unsafe  { BRC.get(state).unwrap() };
 
         let current_byte = unsafe { *input.get(pos).unwrap() };
@@ -138,8 +139,18 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
             BrcTransition::Complete { next } => {
                 println!("Complete: key: {}, name: {}, measurement: {}", key, name, current_measurement);
                 table.update(key, name, current_measurement);
+                println!("after update");
+                current_measurement = 0;
+                current_multiplier = 1;
+                key = 0;
+                name = 0; 
                 state = *next
-            }
+            },
+            
+            BrcTransition::None { next } => {
+                state = *next
+            },
+
             BrcTransition::Negate { next } => {
                 println!("Negation");
 
@@ -148,17 +159,23 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
             },
 
             BrcTransition::PushMult { next } => {
-                println!("PushMult");
-
-                current_measurement = (current_measurement * 10) + (current_byte as i16);
-                state = *next
+                current_measurement = (((current_byte - ASCII_ZERO_CODEPOINT) as i16) * current_multiplier) + current_measurement;
+                current_multiplier *= 10;
+                state = *next;
+                println!("PushMult measurement {}", current_measurement);
             },
 
             BrcTransition::Hash { next } => {
                 println!("Hash");
-                name = (name * 255) + current_byte as u64;
+                name = (name.wrapping_mul(255)) + current_byte as u64;
                 state = *next
             }
         }
+
+        if pos <= end_pos {
+            break;
+        }
+        
+        pos -= 1;
     }
 }
