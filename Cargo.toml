@@ -8,4 +8,4 @@ incremental = false # defaults to 'true' -- problem
 
 [profile.release]
 opt-level = 3
-debug = 2
+debug = 0

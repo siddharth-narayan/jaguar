@@ -6,6 +6,58 @@ use crate::{ErrorCode, Stream, hip_describe_err};
 use crate::bindings::hipError_t;
 use crate::bindings::{hipDeviceSynchronize, hipFree, hipMalloc, hipMallocManaged, hipMemAdvise, hipMemAdvise_v2, hipMemAttachGlobal, hipMemAttachHost, hipMemLocation, hipMemPrefetchAsync_v2, hipModuleLoadData};
 
+
+
+pub mod ptr {
+    use crate::bindings::{hipError_t, hipMemcpy, hipMemcpyKind};
+    use crate::ErrorCode;
+
+    pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize, kind: hipMemcpyKind) -> Result<(), ErrorCode> {
+        let err = unsafe { hipMemcpy(dst as _, src as _, count * size_of::<T>(), kind) };
+        if err != hipError_t::hipSuccess {
+            return Err(err)
+        }
+
+        return Ok(())
+    }
+}
+
+
+
+
+
+
+
+#[derive(Clone, Copy, Default)]
+pub struct HIPAllocator;
+impl HIPAllocator {
+    pub fn new() -> HIPAllocator {
+        HIPAllocator
+    }
+}
+
+unsafe impl Allocator for HIPAllocator {
+    fn allocate(&self, layout: std::alloc::Layout) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
+        let mut ptr: *mut u8 = null_mut();
+        let result = unsafe { hipMalloc(&raw mut ptr as _, layout.size()) };
+
+        if result != hipError_t::hipSuccess {
+            println!("Failed to allocate with hipMallocManaged: {:#?}", hip_describe_err(result))
+        }
+
+        if ptr.is_null() {
+            return Err(AllocError)
+        }
+
+        let slice = unsafe { std::slice::from_raw_parts(ptr, layout.size()) };
+        Ok(NonNull::from_ref(slice))
+    }
+
+    unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, layout: std::alloc::Layout) {
+        _ = unsafe { hipFree(ptr.as_ptr() as _) }
+    }
+}
+
 #[derive(Clone, Copy, Default)]
 pub struct HIPManagedAllocator();
 impl HIPManagedAllocator {
@@ -35,6 +87,10 @@ unsafe impl Allocator for HIPManagedAllocator {
         _ = unsafe { hipFree(ptr.as_ptr() as _) }
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// Advise ///////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
 
 pub use crate::bindings::hipMemoryAdvise as HIPMemoryAdvice;
 pub trait HIPMemAdvise {
