@@ -2,3 +2,4 @@
 .vscode
 *.antlr
 *.elf
+example*.txt

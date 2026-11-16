@@ -25,10 +25,10 @@ fn absolute_id() -> usize {
     wg_id as usize * wavefrontsize() as usize + id as usize
 }
 
-#[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Vec<Vec<Token>>) { 
-    println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
-    return;
+// #[unsafe(no_mangle)]
+// pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Vec<Vec<Token>>) { 
+//     println!("Hello, World! -- From thread #{} #{} (absolute {})", workgroup_id_x(), workitem_id_x(), absolute_id());
+//     return;
 
     // let table = table.as_ref_unchecked();
     
@@ -104,7 +104,7 @@ pub extern "gpu-kernel" fn json() { // table: *const ParseTable, inputs: *mut Ve
     //         },
     //     };
     // };
-}
+// }
 
 const ASCII_ZERO_CODEPOINT: u8 = 48;
 #[unsafe(no_mangle)]
@@ -132,9 +132,9 @@ pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, table: 
     loop {
         // println!("worker {} ({}): state {}, pos: {} input: {:#?}", absolute_id, message_id, state, pos, *input.get(pos).unwrap() as char);
         message_id += 1;
-        let transition_table = unsafe  { BRC.get(state).unwrap() };
+        let transition_table = unsafe  { BRC.get(state).unwrap_unchecked() };
 
-        let current_byte = unsafe { *input.get(pos).unwrap() };
+        let current_byte = unsafe { *input.get(pos).unwrap_unchecked() };
         match transition_table.get(current_byte) {
             BrcTransition::Complete { next } => {
                 // println!("worker {} ({}): Complete: key: {}, name: {}, measurement: {}", absolute_id, message_id, key, name, current_measurement);

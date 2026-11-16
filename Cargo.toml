@@ -5,3 +5,7 @@ members = ["amd", "parse", "jaguar", "hip", "amdgpu-device-libs"]
 [profile.dev]
 opt-level = 2
 incremental = false # defaults to 'true' -- problem
+
+[profile.release]
+opt-level = 3
+debug = 2

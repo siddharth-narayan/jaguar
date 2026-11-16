@@ -1,12 +1,15 @@
-use std::{alloc::{AllocError, Allocator}, ffi::{CStr, CString, c_void}, mem::{self, ManuallyDrop}, ptr::{NonNull, null, null_mut}};
+use std::{alloc::{AllocError, Allocator}, ffi::{CStr, CString, c_void}, ptr::{NonNull, null, null_mut}};
 
 #[allow(non_camel_case_types)]  
 #[allow(non_upper_case_globals)]
 #[allow(non_snake_case)]
 pub mod bindings;
+
+pub mod mem;
+
 use bindings::{hipError_t, hipError_t as ErrorCode, hipFunction_t, hipGetErrorName, hipModuleGetFunctionCount, hipGetErrorString, hipInit, hipModule_t, hipModuleGetFunction, hipModuleLaunchKernel, hipModuleLoad, hipModuleOccupancyMaxPotentialBlockSize, hipModuleUnload, hipStream_t};
 
-use crate::bindings::{hipDeviceSynchronize, hipFree, hipMalloc, hipModuleLoadData};
+use crate::bindings::{hipDeviceSynchronize, hipFree, hipMalloc, hipMallocManaged, hipMemAdvise, hipMemAdvise_v2, hipMemAttachGlobal, hipMemAttachHost, hipMemLocation, hipMemPrefetchAsync_v2, hipModuleLoadData};
 
 #[derive(Clone, Debug)]
 pub struct HIPError {
@@ -21,6 +24,8 @@ pub struct Dim {
     pub y: u32,
     pub z: u32
 }
+
+pub struct Stream(hipStream_t);
 
 pub struct Module (hipModule_t);
 impl Module {
@@ -139,28 +144,3 @@ pub fn hip_device_sync() -> Result<(), ErrorCode> {
     return Ok(());
 }
 
-#[derive(Clone, Copy, Default)]
-pub struct HIPDeviceAllocator();
-impl HIPDeviceAllocator {
-    pub fn new() -> HIPDeviceAllocator {
-        HIPDeviceAllocator()
-    }
-}
-
-unsafe impl Allocator for HIPDeviceAllocator {
-    fn allocate(&self, layout: std::alloc::Layout) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
-        let mut ptr: *mut u8 = null_mut();
-        _ = unsafe { hipMalloc(&raw mut ptr as _, layout.size()) };
-
-        if ptr.is_null() {
-            return Err(AllocError)
-        }
-
-        let slice = unsafe { std::slice::from_raw_parts(ptr, layout.size()) };
-        Ok(NonNull::from_ref(slice))
-    }
-
-    unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, layout: std::alloc::Layout) {
-        _ = unsafe { hipFree(ptr.as_ptr() as _) }
-    }
-}
