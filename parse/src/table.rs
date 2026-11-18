@@ -1,3 +1,5 @@
+use core::mem::MaybeUninit;
+
 pub struct TransitionTable<I: 'static + PartialEq, T: 'static> {
     transitions: &'static [(I, T)],
     unmatched: T
@@ -22,22 +24,26 @@ impl<I: PartialEq, T> TransitionTable<I, T> {
 pub const FINISH: usize = 0;
 pub const FAIL: usize = 1;
 pub const UNCALL: usize = 2; // A state that only uncalls
-pub struct ParseTable<I: PartialEq + 'static, T: 'static> {
-    states: &'static [TransitionTable<I, T>]
+pub struct ParseTable<Action: Default> {
+    table: [Action; 65536]
 }
 
-impl<I: PartialEq, T> ParseTable<I, T> {
-    pub const fn new(start: usize, states: &'static [TransitionTable<I, T>]) -> ParseTable<I, T> {
-        ParseTable {
-            states
+impl<A: Default + Copy> ParseTable<A> {
+    pub const fn new<Input: PartialEq>(start: u8, states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
+        let table = MaybeUninit::uninit();
+        for (state, transition_table) in states.iter().enumerate() {
+            for transition in transition_table.transitions {
+                let index = state << 8 + transition.0;
+                
+            }
         }
+        
+        return ParseTable { table: table.assume_init() };
     }
 
-    pub fn get(&self, state: usize) -> Option<&TransitionTable<I, T>> {
-        self.states.get(state)
-    }
-
-    pub unsafe fn get_unchecked(&self, state: usize) -> &TransitionTable<I, T> {
-        unsafe { self.states.get_unchecked(state) }
+    #[inline]
+    pub fn get(&self, state: u8, input: u8) -> A {
+        let entry: u16 = (state as u16) << 8 + input;
+        unsafe { *self.table.get(entry as usize).unwrap_unchecked() }
     }
 }
