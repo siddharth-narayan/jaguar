@@ -1,6 +1,9 @@
 use core::mem::MaybeUninit;
 use alloc::fmt::Debug;
 
+/// This struct filled with 0 bytes must be valid
+pub unsafe trait ZeroedDefault {}
+
 pub struct TransitionTable<I: 'static + PartialEq, T: 'static> {
     transitions: &'static [(I, T)],
     unmatched: T
@@ -29,15 +32,14 @@ pub struct ParseTable<Action> {
     table: [Action; 65536]
 }
 
-impl<A: Default + Copy + Debug> ParseTable<A> {
-    pub fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
-        let mut table: [A; 65536] = unsafe { MaybeUninit::uninit().assume_init() };
-        for element in &mut table {
-            *element = A::default();
-        }
+impl<A: ZeroedDefault + Copy + Debug> ParseTable<A> {
+    pub const fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
+        let mut table: [A; 65536] = unsafe { MaybeUninit::zeroed().assume_init() };
 
-        for (state, transition_table) in states.iter().enumerate() {
-            for (input, action) in transition_table.transitions {
+        for state in 0..states.len() {
+            let transition_table = &states[state];
+            for transition_idx in 0..transition_table.transitions.len() {
+                let (input, action) = transition_table.transitions.get(transition_idx).unwrap();
                 for input in 0..u8::MAX {
                     table[Self::index(state as u8, input) as usize] = transition_table.unmatched
                 }
@@ -50,7 +52,7 @@ impl<A: Default + Copy + Debug> ParseTable<A> {
     }
 
     #[inline]
-    fn index(state: u8, input: u8) -> u16 {
+    const fn index(state: u8, input: u8) -> u16 {
         ((state as u16) << 8) + input as u16
     }
 

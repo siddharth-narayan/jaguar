@@ -4,7 +4,7 @@ use alloc::fmt::Debug;
 use alloc::{boxed::Box, vec::Vec};
 use smallvec::SmallVec;
 
-use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL};
+use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL, ZeroedDefault};
 
 const HASH_BUCKET_COUNT: usize = 2usize.pow(18);
 
@@ -69,27 +69,23 @@ impl Debug for HashTable {
 }
 
 #[derive(Copy, Clone, Debug)]
+#[repr(u16)]
 pub enum BrcTransition {
     // Can be used as a none transition, maybe need to split them, but it's an optimization for needing less transition types
-    None { next: u8 },
+    None { next: u8 } = 0,
     Negate { next: u8 },
     PushMult { next: u8 },
     Hash { next: u8 },
     Complete { next: u8 }
 }
-
-impl Default for BrcTransition {
-    fn default() -> Self {
-        BrcTransition::None { next: FAIL }
-    }
-}
+unsafe impl ZeroedDefault for BrcTransition {}
 
 #[rustfmt::skip]
 pub const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
-    // Finish - State 0
+    // Fail - State 0
     TransitionTable::new(&[], BrcTransition::None { next: 0 }),
 
-    // Fail - State 1
+    // Finish - State 1
     TransitionTable::new(&[], BrcTransition::None { next: 1 }),
     
     // Search for newline - State 2
@@ -116,12 +112,12 @@ pub const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
     TransitionTable::new(&[
         ('-' as u8, BrcTransition::Negate { next: 8 }),
         (';' as u8, BrcTransition::None { next: 9 })
-    ], BrcTransition::None { next: 1 }),
+    ], BrcTransition::None { next: 0 }),
 
     // The semi after the negative after the second digit >:(
     TransitionTable::new(&[
         (';' as u8, BrcTransition::None { next: 9 })
-    ], BrcTransition::None { next: 1 }),
+    ], BrcTransition::None { next: 0 }),
 
     // Full station name - State 9
     TransitionTable::new(&[
