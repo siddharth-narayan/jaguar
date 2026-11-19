@@ -9,7 +9,7 @@ pub mod mem;
 
 use bindings::{hipError_t, hipError_t as ErrorCode, hipFunction_t, hipGetErrorName, hipModuleGetFunctionCount, hipGetErrorString, hipInit, hipModule_t, hipModuleGetFunction, hipModuleLaunchKernel, hipModuleLoad, hipModuleOccupancyMaxPotentialBlockSize, hipModuleUnload, hipStream_t};
 
-use crate::bindings::{hipDeviceSynchronize, hipFree, hipMalloc, hipMallocManaged, hipMemAdvise, hipMemAdvise_v2, hipMemAttachGlobal, hipMemAttachHost, hipMemLocation, hipMemPrefetchAsync_v2, hipModuleLoadData};
+use crate::bindings::{hipDeviceSynchronize, hipModuleLoadData};
 
 #[derive(Clone, Debug)]
 pub struct HIPError {

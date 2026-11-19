@@ -21,29 +21,41 @@ impl<I: PartialEq, T> TransitionTable<I, T> {
     }
 }
 
-pub const FINISH: usize = 0;
-pub const FAIL: usize = 1;
-pub const UNCALL: usize = 2; // A state that only uncalls
-pub struct ParseTable<Action: Default> {
+pub const FINISH: u8 = 0;
+pub const FAIL: u8 = 1;
+pub const UNCALL: u8 = 2; // A state that only uncalls
+pub struct ParseTable<Action> {
     table: [Action; 65536]
 }
 
 impl<A: Default + Copy> ParseTable<A> {
-    pub const fn new<Input: PartialEq>(start: u8, states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
-        let table = MaybeUninit::uninit();
+    pub fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
+        let mut table: [A; 65536] = unsafe { MaybeUninit::uninit().assume_init() };
+        for element in &mut table {
+            *element = A::default();
+        }
+
         for (state, transition_table) in states.iter().enumerate() {
-            for transition in transition_table.transitions {
-                let index = state << 8 + transition.0;
-                
+            for (input, action) in transition_table.transitions {
+                for input in 0..u8::MAX {
+                    table[Self::index(state as u8, input) as usize] = transition_table.unmatched
+                }
+
+                table[Self::index(state as u8, *input) as usize] = *action
             }
         }
         
-        return ParseTable { table: table.assume_init() };
+        return ParseTable { table }
+    }
+
+    #[inline]
+    fn index(state: u8, input: u8) -> u16 {
+        ((state as u16) << 8) + input as u16
     }
 
     #[inline]
     pub fn get(&self, state: u8, input: u8) -> A {
-        let entry: u16 = (state as u16) << 8 + input;
+        let entry = Self::index(state, input);
         unsafe { *self.table.get(entry as usize).unwrap_unchecked() }
     }
 }

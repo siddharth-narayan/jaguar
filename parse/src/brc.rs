@@ -68,18 +68,24 @@ impl Debug for HashTable {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum BrcTransition {
     // Can be used as a none transition, maybe need to split them, but it's an optimization for needing less transition types
-    None { next: usize },
-    Negate { next: usize },
-    PushMult { next: usize },
-    Hash { next: usize },
-    Complete { next: usize }
+    None { next: u8 },
+    Negate { next: u8 },
+    PushMult { next: u8 },
+    Hash { next: u8 },
+    Complete { next: u8 }
+}
+
+impl Default for BrcTransition {
+    fn default() -> Self {
+        BrcTransition::None { next: FAIL }
+    }
 }
 
 #[rustfmt::skip]
-const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
+pub const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
     // Finish - State 0
     TransitionTable::new(&[], BrcTransition::None { next: 0 }),
 
@@ -124,4 +130,4 @@ const STATES: &'static [TransitionTable<u8, BrcTransition>] = &[
 
 ];
 
-pub static BRC: ParseTable<u8, BrcTransition> = ParseTable::new(2, &STATES);
+// pub static BRC: ParseTable<BrcTransition> = ParseTable::new(STATES);

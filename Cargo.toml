@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["amd", "parse", "jaguar", "hip", "amdgpu-device-libs"]
+members = ["amdgpu", "parse", "jaguar", "hip", "amdgpu-device-libs", "x86"]
 
 [profile.dev]
 opt-level = 2
