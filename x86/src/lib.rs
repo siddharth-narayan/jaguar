@@ -26,6 +26,9 @@ pub fn brc(input: &[u8], parse_table: &ParseTable<BrcTransition>, hash_table: &m
     let mut current_measurement: i16 = 0;
     let mut current_multiplier = 1;
     loop {
+                if state == 1 {
+                    return;
+                }
         let current_byte = unsafe { *input.get(pos).unwrap_unchecked() };
 
         let action = parse_table.get(state, current_byte);
@@ -40,6 +43,7 @@ pub fn brc(input: &[u8], parse_table: &ParseTable<BrcTransition>, hash_table: &m
                 key = 0;
                 name = 0; 
                 state = next;
+
 
                 if pos <= end_pos {
                     break;

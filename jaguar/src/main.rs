@@ -35,6 +35,10 @@ pub fn main() -> Result<(), HIPError> {
 
     // PARSE TABLE
     let parse_table = Box::new(ParseTable::new(STATES));
+
+    // println!("next: {:#?}", parse_table.get(2, 89));
+    // return Ok(());
+
     let mut parse_table_gpu: Box<ParseTable<_>, HIPAllocator> = unsafe { Box::new_uninit_in(HIPAllocator).assume_init() };
     unsafe {
         hip::mem::ptr::copy_nonoverlapping(Box::as_ptr(&parse_table), Box::as_mut_ptr(&mut parse_table_gpu), 1, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;

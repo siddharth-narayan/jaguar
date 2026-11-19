@@ -1,4 +1,5 @@
 use core::mem::MaybeUninit;
+use alloc::fmt::Debug;
 
 pub struct TransitionTable<I: 'static + PartialEq, T: 'static> {
     transitions: &'static [(I, T)],
@@ -28,7 +29,7 @@ pub struct ParseTable<Action> {
     table: [Action; 65536]
 }
 
-impl<A: Default + Copy> ParseTable<A> {
+impl<A: Default + Copy + Debug> ParseTable<A> {
     pub fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
         let mut table: [A; 65536] = unsafe { MaybeUninit::uninit().assume_init() };
         for element in &mut table {
@@ -56,6 +57,9 @@ impl<A: Default + Copy> ParseTable<A> {
     #[inline]
     pub fn get(&self, state: u8, input: u8) -> A {
         let entry = Self::index(state, input);
-        unsafe { *self.table.get(entry as usize).unwrap_unchecked() }
+        let result = unsafe { *self.table.get(entry as usize).unwrap_unchecked() };
+
+        println!("state: {}, input: {}, action: {:#?}", state, input, result);
+        result
     }
 }
