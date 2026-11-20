@@ -28,23 +28,26 @@ impl<I: PartialEq, T> TransitionTable<I, T> {
 pub const FINISH: u8 = 0;
 pub const FAIL: u8 = 1;
 pub const UNCALL: u8 = 2; // A state that only uncalls
+#[derive(Debug)]
 pub struct ParseTable<Action> {
     table: [Action; 65536]
 }
 
 impl<A: ZeroedDefault + Copy + Debug> ParseTable<A> {
-    pub const fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
+    pub fn new(states: &'static [TransitionTable<u8, A>]) -> ParseTable<A> {
         let mut table: [A; 65536] = unsafe { MaybeUninit::zeroed().assume_init() };
 
         for state in 0..states.len() {
             let transition_table = &states[state];
+            for i in 0..u8::MAX {
+                table[Self::index(state as u8, i) as usize] = transition_table.unmatched;
+                // println!("transition was {:#?}", transition_table.unmatched);
+            }
+
             for transition_idx in 0..transition_table.transitions.len() {
                 let (input, action) = transition_table.transitions.get(transition_idx).unwrap();
-                for input in 0..u8::MAX {
-                    table[Self::index(state as u8, input) as usize] = transition_table.unmatched
-                }
-
-                table[Self::index(state as u8, *input) as usize] = *action
+                table[Self::index(state as u8, *input) as usize] = *action;
+                // println!("transition was {:#?}", transition_table.unmatched);
             }
         }
         
@@ -52,8 +55,16 @@ impl<A: ZeroedDefault + Copy + Debug> ParseTable<A> {
     }
 
     #[inline]
-    const fn index(state: u8, input: u8) -> u16 {
+    const fn index_const(state: u8, input: u8) -> u16 {
         ((state as u16) << 8) + input as u16
+    }
+
+    #[inline]
+    fn index(state: u8, input: u8) -> u16 {
+        let result =  ((state as u16) << 8) + input as u16;
+        // println!("index for (state: {}, input: {}) -> {}", state, input, result);
+        result
+       
     }
 
     #[inline]
@@ -61,7 +72,7 @@ impl<A: ZeroedDefault + Copy + Debug> ParseTable<A> {
         let entry = Self::index(state, input);
         let result = unsafe { *self.table.get(entry as usize).unwrap_unchecked() };
 
-        println!("state: {}, input: {}, action: {:#?}", state, input, result);
+        // println!("state: {}, input: {}, action: {:#?}", state, input, result);
         result
     }
 }

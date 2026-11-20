@@ -4,7 +4,7 @@
 #![feature(const_trait_impl)]
 #![feature(allocator_ext)]
 #![feature(generic_atomic)]
-
+#![feature(uint_gather_scatter_bits)]
 extern crate alloc;
 
 pub mod table;
