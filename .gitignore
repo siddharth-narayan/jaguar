@@ -6,3 +6,4 @@ example*.txt
 jaguar/trace
 jaguar/out
 jaguar/disassembly
+*.gz

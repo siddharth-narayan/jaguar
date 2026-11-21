@@ -1,7 +1,7 @@
 #![feature(allocator_ext)]
 #![feature(seek_stream_len)]
 
-use std::{alloc::{GlobalAlloc, GlobalAllocator, System}, collections::HashSet, ffi::c_void, fs::{self, File}, io::{Read, Seek}, mem, ptr::null_mut, thread::sleep, time::{Duration, SystemTime}};
+use std::{alloc::{GlobalAlloc, GlobalAllocator, System}, collections::HashSet, ffi::c_void, fs::{self, File}, io::{Read, Seek}, mem, ptr::null_mut, thread::{self, sleep}, time::{Duration, SystemTime}};
 use hip::{Dim, HIPError, bindings::{hipDeviceSynchronize, hipMemLocationType::hipMemLocationTypeDevice}, hip_describe_err, hip_device_sync, hip_init, hip_load_module, mem::{HIPAllocator, HIPManagedAllocator, HIPMemPrefetch, HIPMemoryLocation}};
 use parse::{brc::{BrcTransition, HashTable, STATES}, table::ParseTable};
 use x86::brc;
@@ -9,8 +9,11 @@ use x86::brc;
 static KERNEL: &[u8] = include_bytes!("jaguar_amdgpu.elf");
 
 pub fn main() -> Result<(), HIPError> {
-    let mut text = fs::read("example-10.txt").unwrap();
-    // text.push('\n' as u8); // IMPORTANT! Without this, the first processor will continue backwards beyond the buffer
+    let mut text = Vec::new();
+    text.push('\n' as u8); // IMPORTANT! Without this, the first processor will continue backwards beyond the buffer
+
+    let mut file = File::open("example-1B.txt").unwrap();
+    file.read_to_end(&mut text);
     
     hip_init(0).map_err(hip_describe_err)?;
     let module = hip_load_module(KERNEL).map_err(hip_describe_err)?;
@@ -35,7 +38,7 @@ pub fn main() -> Result<(), HIPError> {
 
     // PARSE TABLE
     let parse_table = Box::new(ParseTable::new(STATES));
-    hash_table.update(5, 42, 100);
+    // hash_table.update(5, 42, 100);
     fs::write("aaahahahaha", format!("{:#?}", parse_table));
     // println!("next: {:#?}", parse_table.get(2, 89));
     // return Ok(());
@@ -74,28 +77,40 @@ pub fn main() -> Result<(), HIPError> {
 
         let time: SystemTime = SystemTime::now();
 
-    brc(&text, &parse_table, &mut hash_table);
+        thread::scope(|s| {
+            let count = 16;
+            let text = &text;
+            let parse_table = &parse_table;
+            let hash_table = &hash_table;
+            for t in 0..count {
+                s.spawn(move || {
+                    brc(text, parse_table, hash_table, t, count);
+                });
+            }
+        });
 
-        println!("Results: {:#?} ({}ms)", hash_table, time.elapsed().unwrap().as_millis());
+    // brc(&text, &parse_table, &hash_table);
 
-    return Ok(());
+    //     println!("Results: {:#?} ({}ms)", hash_table, time.elapsed().unwrap().as_millis());
 
-    let time: SystemTime = SystemTime::now();
-    kernel.launch(Dim {x: 16, y: 1, z: 1}, Dim {x: 1024, y: 1, z: 1}, 32768, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+    // return Ok(());
 
-    if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
-        println!("Failed to sync: {:#?}", e);
-    }
+    // let time: SystemTime = SystemTime::now();
+    // kernel.launch(Dim {x: 16, y: 1, z: 1}, Dim {x: 1024, y: 1, z: 1}, 32768, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
 
-    unsafe {
-        hip::mem::ptr::copy_nonoverlapping(Box::as_ptr(&hash_table_gpu), Box::as_mut_ptr(&mut hash_table), 1, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
-    }
+    // if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
+    //     println!("Failed to sync: {:#?}", e);
+    // }
 
-    drop(hash_table_gpu);
-    drop(gpu_text);
-    drop(len);
+    // unsafe {
+    //     hip::mem::ptr::copy_nonoverlapping(Box::as_ptr(&hash_table_gpu), Box::as_mut_ptr(&mut hash_table), 1, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
+    // }
 
-    // println!("Results: {:#?} ({}ms)", hash_table, time.elapsed().unwrap().as_millis());
+    // drop(hash_table_gpu);
+    // drop(gpu_text);
+    // drop(len);
+
+    println!("Results: {:#?} ({}ms)", hash_table, time.elapsed().unwrap().as_millis());
 
     Ok(())
 }
