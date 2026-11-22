@@ -13,13 +13,9 @@ pub fn brc(
     total_count: usize
 ) {
     let slice_size = input.len() / total_count;
-
-    let mut message_id = 0;
-    // println!("let start_pos = ({} - 1) - ({} * {})", input.len(), absolute_id, slice_size);
-    // println!("---");
-
     let start_pos = (input.len() - 1) - (absolute_id * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
+    
     let mut pos = start_pos;
     let mut state = 0;
 

@@ -1,5 +1,7 @@
 use core::mem::MaybeUninit;
+use core::cmp::PartialEq;
 use alloc::fmt::Debug;
+use core::marker::Copy;
 
 /// This struct filled with 0 bytes must be valid
 pub unsafe trait ZeroedDefault {}

@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 #![feature(const_index)]
 #![feature(const_iter)]
 #![feature(const_trait_impl)]

@@ -1,4 +1,4 @@
-cd ./amd
+cd ./amdgpu
 cargo clean && cargo build --profile release && mv ../target/amdgcn-amd-amdhsa/release/jaguar_amdgpu.elf ../jaguar/src
 
 cd ../jaguar

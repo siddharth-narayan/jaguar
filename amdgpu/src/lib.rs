@@ -21,81 +21,43 @@ fn absolute_id() -> usize {
     workgroup_id_x() as usize * 32 + workitem_id_x() as usize
 }
 
-const ASCII_ZERO_CODEPOINT: u8 = 48;
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, parse_table: *mut ParseTable<BrcTransition>, hash_table: *mut HashTable) {
-    let input = unsafe { slice::from_raw_parts(input, *input_size as usize) };
-    let parse_table = unsafe { &mut *parse_table };
-    let hash_table = unsafe { &mut *hash_table };
+pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, parse_table: *const ParseTable<BrcTransition>, hash_table: *const HashTable, total_processors: *const u32) {
+    let input = unsafe { core::slice::from_raw_parts(input, *input_size as usize) };
+    let parse_table = unsafe { &*parse_table };
+    let hash_table = unsafe { &*hash_table };
 
-    let total_count = 16384;
-    let absolute_id = absolute_id();
-    let slice_size = input.len() / total_count;
-    
-    let mut message_id = 0;
-    // println!("let start_pos = ({} - 1) - ({} * {})", input.len(), absolute_id, slice_size);
-    // println!("---");
-
-    let start_pos = (input.len() - 1) - (absolute_id * slice_size);
+    let slice_size = input.len() / (unsafe { *total_processors } as usize);
+    let start_pos = (input.len() - 1) - (absolute_id() * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
+
     let mut pos = start_pos;
-    let mut state = 2;
-    
-    let mut key = 0;
-    let mut name = 0;
-    let mut current_measurement: i16 = 0;
-    let mut current_multiplier = 1;
+    let mut state = 0;
+
+    let mut key: usize = 0;
+    let mut name: u64 = 0;
+    let mut current_measurement: i32 = 0;
     loop {
-        let current_byte = unsafe { *input.get(pos).unwrap_unchecked() };
-
-        let action = parse_table.get(state, current_byte);
-        match action {
-            BrcTransition::Complete { next } => {
-                // println!("worker {} ({}): Complete: key: {}, name: {}, measurement: {}", absolute_id, message_id, key, name, current_measurement);
-                message_id += 1;
-                key;
-                name;
-                current_measurement;
-                hash_table.update(key, name, current_measurement);
-                current_measurement = 0;
-                current_multiplier = 1;
-                key = 0;
-                name = 0; 
-                state = next;
-
-                if pos <= end_pos {
-                    break;
-                }
-            },
-            
-            BrcTransition::None { next } => {
-                state = next
-            },
-
-            BrcTransition::Negate { next } => {
-                current_measurement = -current_measurement;
-                state = next
-            },
-
-            BrcTransition::PushMult { next } => {
-                current_measurement = (((current_byte - ASCII_ZERO_CODEPOINT) as i16) * current_multiplier) + current_measurement;
-                current_multiplier *= 10;
-                state = next;
-                // println!("worker {} ({}): PushMult measurement {}", absolute_id, message_id, current_measurement);
-                message_id += 1;
-            },
-
-            BrcTransition::Hash { next } => {
-                // println!("worker {} ({}): Hash", absolute_id, message_id);
-                message_id += 1;
-                name = (name.wrapping_mul(255)) + current_byte as u64;
-                state = next
-            }
+        let current_byte = unsafe { *input.get_unchecked(pos) };
+        let action = unsafe { parse_table.get(state, current_byte) };
+        if action.update_table() {
+            hash_table.update(key, name, current_measurement as i16);
+            key = 0;
+            name = 0;
+            current_measurement = 0;
         }
+
+        state = action.next();
+        current_measurement += (current_byte.wrapping_sub(b'0') as i32) * action.mult_input_by_to_add_current_measurement() as i32;
+        current_measurement += -2 * current_measurement * (action.negate_current_measurement() as i32);
+        
+        key = key.overflowing_add((current_byte * action.mult_input_by_to_hash()) as usize).0;
+        name = name.overflowing_add((name.wrapping_mul(254) + current_byte as u64) * action.mult_input_by_to_hash() as u64).0; // I pray this actually works
 
         if pos <= end_pos {
             break;
         }
+
         pos -= 1;
     }
 }

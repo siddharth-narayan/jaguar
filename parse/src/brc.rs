@@ -1,9 +1,8 @@
+
 use core::{alloc::Allocator, sync::atomic::{Atomic, Ordering::{Relaxed, SeqCst}}};
-use alloc::fmt::Debug;
 
 use alloc::{boxed::Box, vec::Vec};
-use smallvec::SmallVec;
-
+use alloc::fmt::Debug;
 use crate::table::{FAIL, ParseTable, TransitionTable, UNCALL, ZeroedDefault};
 
 const HASH_BUCKET_COUNT: usize = 2usize.pow(19);
@@ -39,8 +38,8 @@ impl HashTable {
         // Safe because zeroed HashTable is valid
         let mut table = unsafe { Box::<HashTable, A>::new_zeroed_in(allocator).assume_init() };
         for entry in &mut table.inner {
-            entry.min = 999.into();
-            entry.max = (-999).into();
+            entry.min = 999i16.into();
+            entry.max = (-999i16).into();
         }
 
         table
@@ -102,7 +101,7 @@ pub struct BrcTransition {
 }
 
 impl Debug for BrcTransition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("BrcTransition")
             .field("next", &self.next())
             .field("mult_input_by_to_add_current_measurement", &self.mult_input_by_to_add_current_measurement())
