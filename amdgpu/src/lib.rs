@@ -17,17 +17,33 @@ use amdgpu_device_libs::print;
 use amdgpu_device_libs::prelude::*;
 use parse::table::{ParseTable, TransitionTable};
 
+#[derive(Clone, Copy, Debug)]
+pub struct Dim {
+    pub x: u32,
+    pub y: u32,
+    pub z: u32
+}
+
 fn absolute_id() -> usize {
     workgroup_id_x() as usize * 32 + workitem_id_x() as usize
 }
 
 #[unsafe(no_mangle)]
-pub extern "gpu-kernel" fn brc(input: *const u8, input_size: *const u32, parse_table: *const ParseTable<BrcTransition>, hash_table: *const HashTable, total_processors: *const u32) {
-    let input = unsafe { core::slice::from_raw_parts(input, *input_size as usize) };
+pub extern "gpu-kernel" fn brc(
+    input: *const u8,
+    input_size: u64,
+    parse_table: *const ParseTable<BrcTransition>,
+    hash_table: *const HashTable,
+    dimensions: *const (Dim, Dim)
+) {
+    let input = unsafe { core::slice::from_raw_parts(input, input_size as usize) };
     let parse_table = unsafe { &*parse_table };
     let hash_table = unsafe { &*hash_table };
+    let dimensions = unsafe { &*dimensions };
 
-    let slice_size = input.len() / (unsafe { *total_processors } as usize);
+    // println!("Hello world with from id {} with dimensions {:#?}", absolute_id(), dimensions);
+
+    let slice_size = input.len() / (unsafe { dimensions.0.x * dimensions.1.x } as usize);
     let start_pos = (input.len() - 1) - (absolute_id() * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
 
