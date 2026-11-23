@@ -30,30 +30,33 @@ pub fn main() {
         }
     }
 
-    let device_libs = env::var("HIP_DEVICE_LIB_PATH").ok()
+    let device_libs = PathBuf::from(
+        env::var("HIP_DEVICE_LIB_PATH").ok()
             .or_else(|| env::var("ROCM_DEVICE_LIB_PATH").ok())
+            .or_else(|| env::var("HIP_PATH").ok().map(|p|format!("{}/amdgcn/bitcode", p)))
             .or_else(|| env::var("ROCM_PATH").ok())
-            .expect("No device lib path found");
+            .expect("No device lib path found")
+    );
 
-    
-    let out_dir = env::var_os("OUT_DIR").unwrap().into_string().unwrap();
-    let bundle_path = format!("{out_dir}/libamdgpu-device-libs.a");
+
+    let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap().into_string().unwrap());
+    let bundle_path = out_dir.join("libamdgpu-device-libs.a");
     let _ = std::fs::remove_file(&bundle_path);
     
     let archiver_path = archiver_command_path();
     let output = Command::new(archiver_path).args([
         "rcs".into(),
         bundle_path.clone(),
-        format!("{}/ockl.bc", device_libs),
-        format!("{}/oclc_isa_version_{}.bc", device_libs, target_cpu),
-        format!("{}/oclc_abi_version_600.bc", device_libs),
-        format!("{}/oclc_wavefrontsize64_{}.bc", device_libs, if is_wave64 { "on" } else { "off" })
+        device_libs.join("ockl.bc"),
+        device_libs.join(format!("oclc_isa_version_{}.bc", target_cpu)),
+        device_libs.join(format!("oclc_abi_version_600.bc")),
+        device_libs.join(format!("oclc_wavefrontsize64_{}.bc", if is_wave64 { "on" } else { "off" })),
     ]).spawn().expect("Failed to spawn llvm-ar").wait_with_output().unwrap().stdout;
 
     println!("output: {}", String::try_from(output).unwrap());
 
 
-    println!("cargo::rustc-link-search=native={out_dir}");
+    println!("cargo::rustc-link-search=native={}", out_dir.display());
     println!("cargo::rustc-link-lib=static=amdgpu-device-libs");
 }
 
