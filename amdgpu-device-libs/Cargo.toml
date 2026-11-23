@@ -13,4 +13,5 @@ panic_handler = []
 print = ["device_libs"]
 
 [build-dependencies]
+which = "8.0.6"
 rustflags = "0.1.7"

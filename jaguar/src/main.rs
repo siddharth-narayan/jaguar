@@ -11,7 +11,7 @@ pub fn main() {
     let mut text = Vec::new();
     text.push('\n' as u8); // IMPORTANT! Without this, the first processor will continue backwards beyond the buffer
 
-    let mut file = File::open("example-1B.txt").unwrap();
+    let mut file = File::open("example-5M.txt").unwrap();
     file.read_to_end(&mut text).expect("Failed to read file");
     
     println!("Finished reading file");
@@ -19,13 +19,15 @@ pub fn main() {
     let mut hash_table = HashTable::new_in(System);
     let parse_table = Box::new(ParseTable::new(STATES));
 
-    gpu(&text, &parse_table, &mut hash_table, Dim { x: 64, y: 1, z: 1 }, Dim { x: 1024, y: 1, z: 1 }).unwrap();
+    gpu(&text, &parse_table, &mut hash_table, Dim { x: 1024, y: 1, z: 1 }, Dim { x: 1024, y: 1, z: 1 }).unwrap();
 }
 
 fn gpu(text: &Vec<u8>, parse_table: &ParseTable<BrcTransition>, hash_table: &mut HashTable, dim: Dim, block_dim: Dim) -> Result<(), HIPError> {
     hip_init(0).map_err(hip_describe_err)?;
     let module = hip_load_module(KERNEL).map_err(hip_describe_err)?;
     let kernel = module.get_function("brc").map_err(hip_describe_err)?;
+    
+    // println!("max pot: {:#?}", kernel.hip_module_occupancy_max_potential_blocksize(0).map_err(hip_describe_err)?);
 
     // TEXT
     let mut gpu_text: Box<Vec<u8, HIPAllocator>, HIPAllocator> = Box::new_in(Vec::new_in(HIPAllocator), HIPAllocator);
@@ -54,18 +56,18 @@ fn gpu(text: &Vec<u8>, parse_table: &ParseTable<BrcTransition>, hash_table: &mut
         hip::mem::ptr::copy_nonoverlapping(&dimensions, Box::as_mut_ptr(&mut dimensions_gpu), 1, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
     }
 
-    let mut text_ptr  = gpu_text.as_ptr() as *mut c_void;
-    let mut text_len  = gpu_text.len() as u64;
-    let mut parse_ptr = Box::as_ptr(&parse_table_gpu);
-    let mut hash_ptr  = Box::as_ptr(&hash_table_gpu);
-    let mut dims_ptr  = Box::as_ptr(&dimensions_gpu);
+    let mut text_ptr  = Box::new_in(gpu_text.as_ptr() as *mut c_void, HIPAllocator);
+    let mut text_len  = Box::new_in(gpu_text.len() as u64, HIPAllocator);
+    let mut parse_ptr = Box::new_in(Box::as_ptr(&parse_table_gpu), HIPAllocator);
+    let mut hash_ptr  = Box::new_in(Box::as_ptr(&hash_table_gpu), HIPAllocator);
+    let mut dims_ptr  = Box::new_in(Box::as_ptr(&dimensions_gpu), HIPAllocator);
 
     let mut args: [*mut c_void; 5] = [
-        &mut text_ptr  as *mut _ as *mut c_void,
-        &mut text_len  as *mut _ as *mut c_void,
-        &mut parse_ptr as *mut _ as *mut c_void,
-        &mut hash_ptr  as *mut _ as *mut c_void,
-        &mut dims_ptr  as *mut _ as *mut c_void,
+        Box::as_mut_ptr(&mut text_ptr)  as *mut _ as *mut c_void,
+        Box::as_mut_ptr(&mut text_len)  as *mut _ as *mut c_void,
+        Box::as_mut_ptr(&mut parse_ptr) as *mut _ as *mut c_void,
+        Box::as_mut_ptr(&mut hash_ptr)  as *mut _ as *mut c_void,
+        Box::as_mut_ptr(&mut dims_ptr)  as *mut _ as *mut c_void,
     ];
 
     let time: SystemTime = SystemTime::now();

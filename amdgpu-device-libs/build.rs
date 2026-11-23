@@ -1,4 +1,4 @@
-use std::{env, process::Command};
+use std::{env, path::PathBuf, process::Command};
 use rustflags::Flag;
 
 pub fn main() {
@@ -40,7 +40,8 @@ pub fn main() {
     let bundle_path = format!("{out_dir}/libamdgpu-device-libs.a");
     let _ = std::fs::remove_file(&bundle_path);
     
-    let output = Command::new("ar").args([
+    let archiver_path = archiver_command_path();
+    let output = Command::new(archiver_path).args([
         "rcs".into(),
         bundle_path.clone(),
         format!("{}/ockl.bc", device_libs),
@@ -54,4 +55,17 @@ pub fn main() {
 
     println!("cargo::rustc-link-search=native={out_dir}");
     println!("cargo::rustc-link-lib=static=amdgpu-device-libs");
+}
+
+fn archiver_command_path() -> PathBuf {
+    let rustc_path = env::var("RUSTC").unwrap();
+    let host = env::var("HOST").unwrap();
+    let sysroot_path = String::from_utf8(Command::new(rustc_path).args(["--print", "sysroot"]).output().unwrap().stdout).unwrap();
+    let llvm_ar_path = PathBuf::from(sysroot_path).join(format!("lib/rustlib/{}/bin/llvm-ar{}", host, env::consts::EXE_SUFFIX));
+
+    if llvm_ar_path.exists() {
+        return llvm_ar_path;
+    }
+
+    return which::which("llvm-ar").or(which::which("ar")).expect("Failed to find archiver on path");
 }
