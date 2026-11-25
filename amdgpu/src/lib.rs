@@ -24,8 +24,8 @@ pub struct Dim {
     pub z: u32
 }
 
-fn absolute_id() -> usize {
-    workgroup_id_x() as usize * 32 + workitem_id_x() as usize
+fn absolute_id(blockdim: Dim) -> usize {
+    (workgroup_id_x() as usize * blockdim.x as usize) + workitem_id_x() as usize
 }
 
 #[unsafe(no_mangle)]
@@ -41,10 +41,10 @@ pub extern "gpu-kernel" fn brc(
     let hash_table = unsafe { &*hash_table };
     let dimensions = unsafe { &*dimensions };
 
-    // println!("Hello world with from id {} with dimensions {:#?}", absolute_id(), dimensions);
+    // println!("Hello world with from wg-id {} wi-id {} absolute {}", workgroup_id_x(), workitem_id_x(), absolute_id(dimensions.1));
 
     let slice_size = input.len() / (unsafe { dimensions.0.x * dimensions.1.x } as usize);
-    let start_pos = (input.len() - 1) - (absolute_id() * slice_size);
+    let start_pos = (input.len() - 1) - (absolute_id(dimensions.1) * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
 
     let mut pos = start_pos;

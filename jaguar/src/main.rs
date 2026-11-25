@@ -11,7 +11,7 @@ pub fn main() {
     let mut text = Vec::new();
     text.push('\n' as u8); // IMPORTANT! Without this, the first processor will continue backwards beyond the buffer
 
-    let mut file = File::open("example-5M.txt").unwrap();
+    let mut file = File::open("example-100K.txt").unwrap();
     file.read_to_end(&mut text).expect("Failed to read file");
     
     println!("Finished reading file");
@@ -19,21 +19,20 @@ pub fn main() {
     let mut hash_table = HashTable::new_in(System);
     let parse_table = Box::new(ParseTable::new(STATES));
 
-    gpu(&text, &parse_table, &mut hash_table, Dim { x: 1024, y: 1, z: 1 }, Dim { x: 1024, y: 1, z: 1 }).unwrap();
+    gpu(&text, &parse_table, &mut hash_table, Dim { x: 1024, y: 1, z: 1 }, Dim { x: 1, y: 1, z: 1 }).unwrap();
 }
 
-fn gpu(text: &Vec<u8>, parse_table: &ParseTable<BrcTransition>, hash_table: &mut HashTable, dim: Dim, block_dim: Dim) -> Result<(), HIPError> {
+fn gpu(text: &[u8], parse_table: &ParseTable<BrcTransition>, hash_table: &mut HashTable, dim: Dim, block_dim: Dim) -> Result<(), HIPError> {
     hip_init(0).map_err(hip_describe_err)?;
     let module = hip_load_module(KERNEL).map_err(hip_describe_err)?;
     let kernel = module.get_function("brc").map_err(hip_describe_err)?;
-    
+
     // println!("max pot: {:#?}", kernel.hip_module_occupancy_max_potential_blocksize(0).map_err(hip_describe_err)?);
 
     // TEXT
     let mut gpu_text: Box<Vec<u8, HIPAllocator>, HIPAllocator> = Box::new_in(Vec::new_in(HIPAllocator), HIPAllocator);
     gpu_text.reserve(text.len());
     unsafe {
-        hip::mem::ptr::copy_nonoverlapping(text.as_ptr(), gpu_text.as_mut_ptr(), text.len(), hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
         gpu_text.set_len(text.len())
     };
 
@@ -56,19 +55,29 @@ fn gpu(text: &Vec<u8>, parse_table: &ParseTable<BrcTransition>, hash_table: &mut
         hip::mem::ptr::copy_nonoverlapping(&dimensions, Box::as_mut_ptr(&mut dimensions_gpu), 1, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
     }
 
-    let mut text_ptr  = Box::new_in(gpu_text.as_ptr() as *mut c_void, HIPAllocator);
-    let mut text_len  = Box::new_in(gpu_text.len() as u64, HIPAllocator);
-    let mut parse_ptr = Box::new_in(Box::as_ptr(&parse_table_gpu), HIPAllocator);
-    let mut hash_ptr  = Box::new_in(Box::as_ptr(&hash_table_gpu), HIPAllocator);
-    let mut dims_ptr  = Box::new_in(Box::as_ptr(&dimensions_gpu), HIPAllocator);
+    let mut text_ptr  = gpu_text.as_ptr() as *mut c_void;
+    let mut text_len  = gpu_text.len() as u64;
+    let mut parse_ptr = Box::as_ptr(&parse_table_gpu);
+    let mut hash_ptr  = Box::as_ptr(&hash_table_gpu);
+    let mut dims_ptr  = Box::as_ptr(&dimensions_gpu);
 
     let mut args: [*mut c_void; 5] = [
-        Box::as_mut_ptr(&mut text_ptr)  as *mut _ as *mut c_void,
-        Box::as_mut_ptr(&mut text_len)  as *mut _ as *mut c_void,
-        Box::as_mut_ptr(&mut parse_ptr) as *mut _ as *mut c_void,
-        Box::as_mut_ptr(&mut hash_ptr)  as *mut _ as *mut c_void,
-        Box::as_mut_ptr(&mut dims_ptr)  as *mut _ as *mut c_void,
+        &mut text_ptr  as *mut _ as *mut c_void,
+        &mut text_len  as *mut _ as *mut c_void,
+        &mut parse_ptr as *mut _ as *mut c_void,
+        &mut hash_ptr  as *mut _ as *mut c_void,
+        &mut dims_ptr  as *mut _ as *mut c_void,
     ];
+
+    let mut chunk_index = 0;
+    let mut chunk_start = 0;
+    while let chunk_end = get_chunk_end_location(text, chunk_index, dim.x as usize * block_dim.x as usize * 512) && x != text.len() {
+        chunk_index += 1;
+
+        unsafe {
+            hip::mem::ptr::copy_nonoverlapping(text.as_ptr().offset(chunk_start as isize), gpu_text.as_mut_ptr().offset(chunk_start as isize), chunk_end - chunk_start, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
+        }
+    }
 
     let time: SystemTime = SystemTime::now();
     kernel.launch(dim, block_dim, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
@@ -106,4 +115,19 @@ fn cpu(text: &Vec<u8>, parse_table: &ParseTable<BrcTransition>, hash_table: &Has
     });
 
     println!("Results: {:#?} ({}ms)", hash_table, time.elapsed().unwrap().as_millis());
+}
+
+fn get_chunk_end_location(input: &[u8], index: usize, chunk_size: usize) -> usize {
+    let cursor = (index + 1) * chunk_size;
+    loop {
+        match input.get(cursor) {
+            None => return input.len(),
+            Some(n) => {
+                if *n == '\n' as u8 {
+                    return cursor
+                }
+            }
+        }
+
+    }
 }
