@@ -32,6 +32,10 @@ fn absolute_id(blockdim: Dim) -> usize {
 pub extern "gpu-kernel" fn brc(
     input: *const u8,
     input_size: u64,
+
+    slice_size: u64,
+    chunk_end: u64,
+    
     parse_table: *const ParseTable<BrcTransition>,
     hash_table: *const HashTable,
     dimensions: *const (Dim, Dim)
@@ -43,8 +47,7 @@ pub extern "gpu-kernel" fn brc(
 
     // println!("Hello world with from wg-id {} wi-id {} absolute {}", workgroup_id_x(), workitem_id_x(), absolute_id(dimensions.1));
 
-    let slice_size = input.len() / (unsafe { dimensions.0.x * dimensions.1.x } as usize);
-    let start_pos = (input.len() - 1) - (absolute_id(dimensions.1) * slice_size);
+    let start_pos = (chunk_end - 1) - (absolute_id(dimensions.1) * slice_size);
     let end_pos = (start_pos + 1) - slice_size;
 
     let mut pos = start_pos;

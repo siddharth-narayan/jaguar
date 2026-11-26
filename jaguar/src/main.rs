@@ -71,16 +71,16 @@ fn gpu(text: &[u8], parse_table: &ParseTable<BrcTransition>, hash_table: &mut Ha
 
     let mut chunk_index = 0;
     let mut chunk_start = 0;
-    while let chunk_end = get_chunk_end_location(text, chunk_index, dim.x as usize * block_dim.x as usize * 512) && x != text.len() {
+    while let chunk_end = get_chunk_end_location(text, chunk_index, dim.x as usize * block_dim.x as usize * 128) && chunk_end != text.len() {
         chunk_index += 1;
 
         unsafe {
             hip::mem::ptr::copy_nonoverlapping(text.as_ptr().offset(chunk_start as isize), gpu_text.as_mut_ptr().offset(chunk_start as isize), chunk_end - chunk_start, hip::bindings::hipMemcpyKind::hipMemcpyHostToDevice).map_err(hip_describe_err)?;
         }
-    }
 
-    let time: SystemTime = SystemTime::now();
-    kernel.launch(dim, block_dim, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+        kernel.launch(dim, block_dim, 0, args.as_mut_ptr(), null_mut()).map_err(hip_describe_err)?;
+
+    }
 
     if let Err(e) = hip_device_sync().map_err(hip_describe_err) {
         println!("Failed to sync: {:#?}", e);
